@@ -70,19 +70,21 @@ const prevPage = () => {
 };
 
 const toggleBlock = async (user) => {
-  const action = user.isBlocked ? 'Unblock' : 'Block';
+  const action = user.blocked ? 'Unblock' : 'Block'; // Note: DTO might use 'blocked' or 'isBlocked'
   if (!confirm(`${action} user ${user.username}?`)) return;
 
   try {
-    if (user.isBlocked) {
+    // Check if your DTO property is 'blocked' or 'isBlocked'
+    // AdminUserResponseDTO usually has setBlocked/getBlocked
+    if (user.blocked) {
       await adminService.unblockUser(user.id);
-      user.isBlocked = false;
+      user.blocked = false;
     } else {
       await adminService.blockUser(user.id);
-      user.isBlocked = true;
+      user.blocked = true;
     }
   } catch (error) {
-    alert('Action failed.');
+    alert("Action failed.");
   }
 };
 
@@ -141,23 +143,23 @@ onMounted(fetchUsers);
               </span>
             </td>
             <td>
-                  <!-- use isBlocked consistently -->
-                  <span class="badge" :class="user.isBlocked ? 'badge-blocked' : 'badge-active'">
-                    {{ user.isBlocked ? 'Blocked' : 'Active' }}
-                  </span>
-                </td>
-                <td>
-                  <div class="actions">
-                    <RouterLink :to="`/profile/${user.id}`" class="btn-link">View</RouterLink>
-                    <button 
-                      @click="toggleBlock(user)" 
-                      class="btn-sm"
-                      :class="user.isBlocked ? 'btn-unblock' : 'btn-block'"
-                    >
-                      {{ user.blocked ? 'Unblock' : 'Block' }}
-                    </button>
-                  </div>
-                </td>
+              <!-- Check property name: blocked vs isBlocked -->
+              <span class="badge" :class="user.blocked ? 'badge-blocked' : 'badge-active'">
+                {{ user.blocked ? 'Blocked' : 'Active' }}
+              </span>
+            </td>
+            <td>
+              <div class="actions">
+                <RouterLink :to="`/profile/${user.id}`" class="btn-link">View</RouterLink>
+                <button 
+                  @click="toggleBlock(user)" 
+                  class="btn-sm"
+                  :class="user.blocked ? 'btn-unblock' : 'btn-block'"
+                >
+                  {{ user.blocked ? 'Unblock' : 'Block' }}
+                </button>
+              </div>
+            </td>
           </tr>
           <tr v-if="users.length === 0">
             <td colspan="6" class="empty-cell">No users found.</td>

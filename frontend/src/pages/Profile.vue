@@ -6,14 +6,19 @@ import { useAuthStore } from '../stores/auth.store';
 import usersService from '../services/users.service';
 import PostCard from '../components/PostCard.vue';
 import adminService from '../services/admin.service';
-import PostItem from '../components/PostItem.vue';
 import PasswordConfirmModal from '../components/PasswordConfirmModal.vue';
-import { getAuth, updateEmail, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
+import {
+  getAuth,
+  updateEmail,
+  updatePassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+} from 'firebase/auth';
 
 const route = useRoute();
 const authStore = useAuthStore();
 
-// ... existing state ...
+// State
 const profile = ref(null);
 const posts = ref([]);
 const followersList = ref([]);
@@ -30,48 +35,67 @@ let passwordResolve = null;
 const successMessage = ref(null);
 
 // Computed
-const isCurrentUser = computed(() => authStore.user && profile.value && authStore.user.id === profile.value.id);
+const isCurrentUser = computed(
+  () => authStore.user && profile.value && authStore.user.id === profile.value.id
+);
 
-// UPDATED: Robust Admin Check
+// Admin check (backend role or username fallback)
 const isAdmin = computed(() => {
-    const u = authStore.user;
-    return u?.role === 'ADMIN' || u?.username === 'admin'; // Fallback for missing role field
+  const u = authStore.user;
+  return u?.role === 'ADMIN' || u?.username === 'admin';
 });
 
-const isFollowing = computed(() => authStore.user && followersList.value && followersList.value.some(user => user.id === authStore.user.id));
-const formatDate = (dateString) => new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+const isFollowing = computed(
+  () =>
+    authStore.user &&
+    followersList.value &&
+    followersList.value.some((user) => user.id === authStore.user.id)
+);
 
-// Fetch Profile
-const fetchProfileData = async () => {
-// ... existing fetchProfileData ...
+const formatDate = (dateString) =>
+  new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+
+// Fetch profile + posts + followers/following
 const fetchProfileData = async () => {
   loading.value = true;
   error.value = null;
+
   const targetId = route.params.id || authStore.user?.id;
-  if (!targetId) { error.value = "User not found."; loading.value = false; return; }
+  if (!targetId) {
+    error.value = 'User not found.';
+    loading.value = false;
+    return;
+  }
+
   try {
     const userRes = await usersService.getById(targetId);
     let userData = userRes.data;
 
-    // Force fetch admin details if we are admin
+    // As admin, try to fetch extra admin info for viewed user
     if (isAdmin.value && authStore.user?.id !== userData.id) {
-        try {
-            const adminRes = await adminService.search({ username: userData.username });
-            const adminDetails = adminRes.data.find(u => u.id === userData.id);
-            if (adminDetails) {
-                userData = { ...userData, ...adminDetails };
-            }
-        } catch (e) {
-            console.error("Failed to fetch admin details", e);
+      try {
+        const adminRes = await adminService.search({ username: userData.username });
+        const adminDetails = adminRes.data.find((u) => u.id === userData.id);
+        if (adminDetails) {
+          userData = { ...userData, ...adminDetails };
         }
+      } catch (e) {
+        console.error('Failed to fetch admin details', e);
+      }
     }
+
     profile.value = userData;
 
     const [postsRes, followersRes, followingRes] = await Promise.all([
       usersService.getPostsByUser(targetId),
       usersService.getFollowers(targetId),
-      usersService.getFollowing(targetId)
+      usersService.getFollowing(targetId),
     ]);
+
     posts.value = postsRes.data;
     followersList.value = followersRes.data;
     followingList.value = followingRes.data;
@@ -81,109 +105,180 @@ const fetchProfileData = async () => {
       lastName: profile.value.lastName,
       email: profile.value.email,
       password: '',
-      profilePhotoURL: profile.value.profilePhotoURL || ''
+      profilePhotoURL: profile.value.profilePhotoURL || '',
     };
-  } catch (err) { console.error(err); error.value = "Failed to load profile."; } finally { loading.value = false; }
+  } catch (err) {
+    console.error(err);
+    error.value = 'Failed to load profile.';
+  } finally {
+    loading.value = false;
+  }
 };
 
-// ... rest of the script (actions, saveProfile, etc.) ...
-// Copy the toggleFollow, handleBlock, handleUnblock, handlePromote, saveProfile from previous response
-const toggleFollow = async () => {
+// Follow / Unfollow
 const toggleFollow = async () => {
   if (isFollowLoading.value || !profile.value) return;
   isFollowLoading.value = true;
   try {
-    if (isFollowing.value) { await usersService.unfollow(profile.value.id); followersList.value = followersList.value.filter(u => u.id !== authStore.user.id); }
-    else { await usersService.follow(profile.value.id); followersList.value.push(authStore.user); }
-  } catch (err) { alert("Action failed: " + err.message); } finally { isFollowLoading.value = false; }
+    if (isFollowing.value) {
+      await usersService.unfollow(profile.value.id);
+      followersList.value = followersList.value.filter(
+        (u) => u.id !== authStore.user.id
+      );
+    } else {
+      await usersService.follow(profile.value.id);
+      followersList.value.push(authStore.user);
+    }
+  } catch (err) {
+    alert('Action failed: ' + err.message);
+  } finally {
+    isFollowLoading.value = false;
+  }
 };
 
+// Admin actions
 const handleBlock = async () => {
-  if (!confirm("Block this user?")) return;
-  try { await adminService.blockUser(profile.value.id); profile.value.isBlocked = true; showSuccess("User blocked."); } catch (error) { alert("Failed."); }
+  if (!confirm('Block this user?')) return;
+  try {
+    await adminService.blockUser(profile.value.id);
+    profile.value.isBlocked = true;
+    showSuccess('User blocked.');
+  } catch (error) {
+    alert('Failed.');
+  }
 };
+
 const handleUnblock = async () => {
-  try { await adminService.unblockUser(profile.value.id); profile.value.isBlocked = false; showSuccess("User unblocked."); } catch (error) { alert("Failed."); }
+  try {
+    await adminService.unblockUser(profile.value.id);
+    profile.value.isBlocked = false;
+    showSuccess('User unblocked.');
+  } catch (error) {
+    alert('Failed.');
+  }
 };
+
 const handlePromote = async () => {
-  if (!confirm("Promote to Admin?")) return;
-  try { await adminService.promoteUser(profile.value.id); profile.value.role = 'ADMIN'; showSuccess("Promoted to Admin."); } catch (error) { alert("Failed."); }
+  if (!confirm('Promote to Admin?')) return;
+  try {
+    await adminService.promoteUser(profile.value.id);
+    profile.value.role = 'ADMIN';
+    showSuccess('Promoted to Admin.');
+  } catch (error) {
+    alert('Failed.');
+  }
 };
 
-const askForPassword = () => { isPasswordModalOpen.value = true; return new Promise((resolve) => { passwordResolve = resolve; }); };
-const onPasswordConfirm = (password) => { isPasswordModalOpen.value = false; if (passwordResolve) passwordResolve(password); };
-const onPasswordCancel = () => { isPasswordModalOpen.value = false; if (passwordResolve) passwordResolve(null); };
-const showSuccess = (msg) => { successMessage.value = msg; setTimeout(() => { successMessage.value = null; }, 3000); };
+// Password modal helpers
+const askForPassword = () => {
+  isPasswordModalOpen.value = true;
+  return new Promise((resolve) => {
+    passwordResolve = resolve;
+  });
+};
 
+const onPasswordConfirm = (password) => {
+  isPasswordModalOpen.value = false;
+  if (passwordResolve) passwordResolve(password);
+};
+
+const onPasswordCancel = () => {
+  isPasswordModalOpen.value = false;
+  if (passwordResolve) passwordResolve(null);
+};
+
+const showSuccess = (msg) => {
+  successMessage.value = msg;
+  setTimeout(() => {
+    successMessage.value = null;
+  }, 3000);
+};
+
+// Save profile (with Firebase email/password sync)
 const saveProfile = async () => {
-  // ... (Keep existing saveProfile logic) ...
   const auth = getAuth();
   const firebaseUser = auth.currentUser;
   const emailChanged = editForm.value.email !== profile.value.email;
-  const passwordChanged = editForm.value.password && editForm.value.password.length >= 6;
+  const passwordChanged =
+    editForm.value.password && editForm.value.password.length >= 6;
 
   try {
     if (emailChanged || passwordChanged) {
       const currentPass = await askForPassword();
-      if (!currentPass) throw new Error("Action cancelled.");
       if (!currentPass) return;
-      const credential = EmailAuthProvider.credential(firebaseUser.email, currentPass);
+
+      const credential = EmailAuthProvider.credential(
+        firebaseUser.email,
+        currentPass
+      );
       await reauthenticateWithCredential(firebaseUser, credential);
-      if (emailChanged) await updateEmail(firebaseUser, editForm.value.email);
-      if (passwordChanged) await updatePassword(firebaseUser, editForm.value.password);
+
+      if (emailChanged) {
+        await updateEmail(firebaseUser, editForm.value.email);
+      }
+      if (passwordChanged) {
+        await updatePassword(firebaseUser, editForm.value.password);
+      }
     }
 
     const updatePayload = {
       firstName: editForm.value.firstName,
       lastName: editForm.value.lastName,
       email: editForm.value.email,
-      profilePhotoURL: editForm.value.profilePhotoURL || null
+      profilePhotoURL: editForm.value.profilePhotoURL || null,
     };
-
     if (passwordChanged) {
       updatePayload.password = editForm.value.password;
     }
 
-    const updatePayload = { firstName: editForm.value.firstName, lastName: editForm.value.lastName, email: editForm.value.email, profilePhotoURL: editForm.value.profilePhotoURL || null };
-    if (passwordChanged) updatePayload.password = editForm.value.password;
     const updatedUser = await usersService.update(profile.value.id, updatePayload);
 
+    // Force token refresh if email changed
     if (emailChanged) {
-      await updateEmail(firebaseUser, editForm.value.email);
       await firebaseUser.getIdToken(true);
-    }
-    if (passwordChanged) {
-      await updatePassword(firebaseUser, editForm.value.password);
     }
 
     profile.value = updatedUser.data;
     isEditing.value = false;
-    if (isCurrentUser.value) { authStore.user = updatedUser.data; localStorage.setItem('user', JSON.stringify(updatedUser.data)); }
-    editForm.value.password = '';
-    showSuccess("Profile updated successfully!");
 
+    if (isCurrentUser.value) {
+      authStore.user = updatedUser.data;
+      localStorage.setItem('user', JSON.stringify(updatedUser.data));
+    }
+
+    editForm.value.password = '';
+    showSuccess('Profile updated successfully!');
   } catch (err) {
     console.error(err);
     let msg = err.message;
     if (err.response?.data?.message) msg = err.response.data.message;
-    alert("Error: " + msg);
-    if (msg.includes("401") || msg.includes("403")) {
-      alert("Sync error. Please logout and login again.");
+    alert('Error: ' + msg);
+
+    if (msg.includes('401') || msg.includes('403')) {
+      alert('Sync error. Please logout and login again.');
       authStore.logout();
       window.location.href = '/login';
     }
   }
 };
 
-// --- НОВО: Изтриване на пост ---
+// Remove post from list (used by PostCard @post-deleted)
 const removePost = (postId) => {
-  posts.value = posts.value.filter(p => p.id !== postId);
-    showSuccess("Profile updated!");
-  } catch (err) { console.error(err); alert("Error: " + err.message); }
+  posts.value = posts.value.filter((p) => p.id !== postId);
+  showSuccess('Post removed.');
 };
 
-watch(() => route.params.id, () => { fetchProfileData(); });
-onMounted(() => { fetchProfileData(); });
+// Reactivity on route change
+watch(
+  () => route.params.id,
+  () => {
+    fetchProfileData();
+  }
+);
+
+onMounted(() => {
+  fetchProfileData();
+});
 </script>
 
 <template>
