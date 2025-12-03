@@ -3,7 +3,9 @@ package telerik.project.controllers.rest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import telerik.project.helpers.AuthenticationHelper;
 import telerik.project.helpers.mappers.NotificationMapper;
+import telerik.project.models.User;
 import telerik.project.models.dtos.response.NotificationResponseDTO;
 import telerik.project.models.filters.NotificationFilterOptions;
 import telerik.project.services.contracts.NotificationService;
@@ -21,7 +23,6 @@ public class NotificationRestController {
 
     @GetMapping
     public List<NotificationResponseDTO> getAll(
-            @RequestHeader("X-User-Id") Long actingUserId,
             @RequestParam(required = false) Long actorId,
             @RequestParam(required = false) Boolean isRead,
             @RequestParam(required = false) String entityType,
@@ -33,45 +34,44 @@ public class NotificationRestController {
             @RequestParam(defaultValue = "0") Integer page,
             @RequestParam(defaultValue = "10") Integer size
     ) {
+        // 1. Взимаме кой е логнат (Това е ПОЛУЧАТЕЛЯТ на известията)
+        User receiver = AuthenticationHelper.getLoggedUser();
+
         NotificationFilterOptions filterOptions = new NotificationFilterOptions(
                 actorId, isRead, entityType, actionType, createdAfter, createdBefore,
                 sortBy, sortOrder, page, size
         );
 
-        return notificationService.getAll(actingUserId, filterOptions).stream()
+        // 2. Викаме сървиза, подавайки ID-то на получателя
+        return notificationService.getAll(receiver.getId(), filterOptions).stream()
                 .map(notificationMapper::toResponse)
                 .toList();
     }
 
     @GetMapping("/{id}")
-    public NotificationResponseDTO getById(
-            @RequestHeader("X-User-Id") Long actingUserId,
-            @PathVariable Long id
-    ) {
-        return notificationMapper.toResponse(notificationService.getById(actingUserId, id));
+    public NotificationResponseDTO getById(@PathVariable Long id) {
+        User receiver = AuthenticationHelper.getLoggedUser();
+        return notificationMapper.toResponse(notificationService.getById(receiver.getId(), id));
     }
 
     @PutMapping("/{id}/read")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void markAsRead(
-            @RequestHeader("X-User-Id") Long actingUserId,
-            @PathVariable Long id
-    ) {
-        notificationService.markAsRead(actingUserId, id);
+    public void markAsRead(@PathVariable Long id) {
+        User receiver = AuthenticationHelper.getLoggedUser();
+        notificationService.markAsRead(receiver.getId(), id);
     }
 
     @PutMapping("/read-all")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void markAsRead(@RequestHeader("X-User-Id") Long actingUserId) {
-        notificationService.markAllAsRead(actingUserId);
+    public void markAllAsRead() {
+        User receiver = AuthenticationHelper.getLoggedUser();
+        notificationService.markAllAsRead(receiver.getId());
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(
-            @RequestHeader("X-User-Id") Long actingUserId,
-            @PathVariable Long id
-    ) {
-        notificationService.delete(actingUserId, id);
+    public void delete(@PathVariable Long id) {
+        User receiver = AuthenticationHelper.getLoggedUser();
+        notificationService.delete(receiver.getId(), id);
     }
 }

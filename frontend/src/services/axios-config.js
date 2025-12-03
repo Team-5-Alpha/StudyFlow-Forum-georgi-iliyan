@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { useAuthStore } from '../stores/auth.store';
+import { getAuth } from 'firebase/auth';
 
 const API_URL = 'http://localhost:8080/api';
 
@@ -11,19 +11,21 @@ const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use(
-    (config) => {
-        try {
-            const authStore = useAuthStore();
-            const userId = authStore.currentUserId;
+    async (config) => {
+        const auth = getAuth();
+        const user = auth.currentUser;
 
-            if (userId) {
-                config.headers['X-User-Id'] = userId;
+        if (user) {
+            try {
+                const token = await user.getIdToken();
+
+                config.headers['Authorization'] = `Bearer ${token}`;
+
+            } catch (e) {
+                console.error("Error fetching Firebase token", e);
             }
-        } catch (e) {
-            const storedUser = JSON.parse(localStorage.getItem('user'));
-            if (storedUser?.id) {
-                config.headers['X-User-Id'] = storedUser.id;
-            }
+        } else {
+            console.warn("No Firebase user found in interceptor - sending anonymous request");
         }
 
         return config;
@@ -36,6 +38,9 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
     (response) => response,
     (error) => {
+        if (error.response && error.response.status === 401) {
+            console.error("Unauthorized! Token might be invalid or user missing in DB.");
+        }
         return Promise.reject(error);
     }
 );

@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import telerik.project.helpers.AuthenticationHelper; // <--- НОВО
 import telerik.project.helpers.mappers.CommentMapper;
 import telerik.project.models.Comment;
 import telerik.project.models.User;
@@ -12,7 +13,6 @@ import telerik.project.models.dtos.response.CommentResponseDTO;
 import telerik.project.models.dtos.update.CommentUpdateDTO;
 import telerik.project.models.filters.CommentFilterOptions;
 import telerik.project.services.contracts.CommentService;
-import telerik.project.services.contracts.UserService;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -24,7 +24,6 @@ public class CommentRestController {
 
     private final CommentService commentService;
     private final CommentMapper commentMapper;
-    private final UserService userService;
 
     @GetMapping
     public List<CommentResponseDTO> getAll(
@@ -61,11 +60,10 @@ public class CommentRestController {
     @PostMapping("/{id}")
     @ResponseStatus(HttpStatus.CREATED)
     public CommentResponseDTO create(
-            @RequestHeader("X-User-Id") Long actingUserId,
             @PathVariable Long id,
             @Valid @RequestBody CommentCreateDTO dto
     ) {
-        User actingUser = userService.getById(actingUserId);
+        User actingUser = AuthenticationHelper.getLoggedUser();
         Comment parent = commentService.getById(id);
 
         Comment reply = new Comment();
@@ -79,11 +77,10 @@ public class CommentRestController {
 
     @PutMapping("/{id}")
     public CommentResponseDTO update(
-            @RequestHeader("X-User-Id") Long actingUserId,
             @PathVariable Long id,
             @Valid @RequestBody CommentUpdateDTO dto
     ) {
-        User actingUser = userService.getById(actingUserId);
+        User actingUser = AuthenticationHelper.getLoggedUser();
         Comment target = commentService.getById(id);
 
         commentMapper.updateComment(target, dto);
@@ -94,29 +91,20 @@ public class CommentRestController {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(
-            @RequestHeader("X-User-Id") Long actingUserId,
-            @PathVariable Long id
-    ) {
-        User actingUser = userService.getById(actingUserId);
+    public void delete(@PathVariable Long id) {
+        User actingUser = AuthenticationHelper.getLoggedUser();
         commentService.delete(id, actingUser);
     }
 
     @PostMapping("/{id}/likes")
-    public void like(
-            @RequestHeader("X-User-Id") Long actingUserId,
-            @PathVariable Long id
-    ) {
-        User actingUser = userService.getById(actingUserId);
+    public void like(@PathVariable Long id) {
+        User actingUser = AuthenticationHelper.getLoggedUser();
         commentService.likeComment(id, actingUser);
     }
 
     @DeleteMapping("/{id}/likes")
-    public void unlike(
-            @RequestHeader("X-User-Id") Long actingUserId,
-            @PathVariable Long id
-    ) {
-        User actingUser = userService.getById(actingUserId);
+    public void unlike(@PathVariable Long id) {
+        User actingUser = AuthenticationHelper.getLoggedUser();
         commentService.unlikeComment(id, actingUser);
     }
 }

@@ -1,11 +1,11 @@
 package telerik.project.models.dtos.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Set;
 
 @Getter
@@ -22,6 +22,10 @@ public class PostResponseDTO {
 
     private UserSummaryDTO author;
 
+    @JsonProperty("isLiked")
+    private boolean isLiked;
+
     private int likesCount;
+
     private Set<String> tags;
 }

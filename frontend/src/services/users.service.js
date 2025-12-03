@@ -2,7 +2,6 @@ import apiClient from './axios-config';
 
 export default {
     search(filterOptions) {
-        // filterOptions: { username, firstName, lastName, email, sortBy, sortOrder, page, size }
         return apiClient.get('/users', { params: filterOptions });
     },
 

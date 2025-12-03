@@ -25,11 +25,11 @@ export default {
         return apiClient.delete(`/comments/${id}`);
     },
 
-    like(id) {
+    likeComment(id) {
         return apiClient.post(`/comments/${id}/likes`);
     },
 
-    unlike(id) {
+    unlikeComment(id) {
         return apiClient.delete(`/comments/${id}/likes`);
     }
 };

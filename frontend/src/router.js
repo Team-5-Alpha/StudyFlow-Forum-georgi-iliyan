@@ -17,26 +17,29 @@ const routes = [
         path: '/profile',
         name: 'MyProfile',
         component: Profile,
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true, transition: 'fade-slide'}
     },
 
 
     {
         path: '/profile/:id',
         name: 'UserProfile',
-        component: Profile
+        component: Profile,
+        meta: { transition: 'fade-slide' }
     },
 
 
     {
         path: '/profile/:id/followers',
         name: 'Followers',
-        component: FollowList
+        component: FollowList,
+        meta: { transition: 'fade-slide' }
     },
     {
         path: '/profile/:id/following',
         name: 'Following',
-        component: FollowList
+        component: FollowList,
+        meta: { transition: 'fade-slide' }
     },
 ];
 

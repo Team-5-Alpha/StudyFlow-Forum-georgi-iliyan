@@ -3,15 +3,22 @@ package telerik.project.helpers.mappers;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import telerik.project.models.Post;
+import telerik.project.models.User;
 import telerik.project.models.dtos.response.PostResponseDTO;
 
 @Component
 @RequiredArgsConstructor
 public class PostMapper {
+
     private final UserMapper userMapper;
     private final TagMapper tagMapper;
 
+
     public PostResponseDTO toResponse(Post post) {
+        return toResponse(post, null);
+    }
+
+    public PostResponseDTO toResponse(Post post, User currentUser) {
         PostResponseDTO dto = new PostResponseDTO();
 
         dto.setId(post.getId());
@@ -22,8 +29,19 @@ public class PostMapper {
         dto.setUpdatedAt(post.getUpdatedAt());
 
         dto.setAuthor(userMapper.toSummary(post.getAuthor()));
+
+        // Determine if current user has liked this post
+        boolean isLiked = currentUser != null && post.isLikedBy(currentUser);
+        dto.setLiked(isLiked);
+
+        // Set likes count
         dto.setLikesCount(post.getLikedByUsers().size());
+
+        // Set tags
         dto.setTags(tagMapper.toNameSet(post.getTags()));
+
+
+
         return dto;
     }
 }

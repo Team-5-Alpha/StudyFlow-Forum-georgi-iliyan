@@ -68,7 +68,11 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     @Transactional
-    public void create(Comment comment, Long postId, User author) {
+    public void create(Comment comment, Long postId, User authorParam) {
+        // Reload User
+        User author = userRepository.findById(authorParam.getId())
+                .orElseThrow(() -> new EntityNotFoundException("User", authorParam.getId()));
+
         AuthorizationHelper.validateNotBlocked(author);
 
         Post post = postService.getById(postId);
@@ -79,40 +83,24 @@ public class CommentServiceImpl implements CommentService {
 
         if (comment.getParentComment() != null) {
             Comment parent = getById(comment.getParentComment().getId());
-
             CommentValidationHelper.validateParentNotDeleted(parent);
             CommentValidationHelper.validateReplySamePost(parent, postId);
-
             comment.setParentComment(parent);
 
-            notificationService.send(
-                    author,
-                    parent.getAuthor(),
-                    parent.getId(),
-                    "COMMENT",
-                    "REPLY"
-            );
+            notificationService.send(author, parent.getAuthor(), parent.getId(), "COMMENT", "REPLY");
         }
 
         commentRepository.save(comment);
-        notificationService.send(
-                author,
-                post.getAuthor(),
-                postId,
-                "COMMENT",
-                "CREATE"
-        );
+        notificationService.send(author, post.getAuthor(), postId, "COMMENT", "CREATE");
     }
 
     @Override
     @Transactional
     public void update(Long commentId, Comment updatedComment, User actingUser) {
         AuthorizationHelper.validateNotBlocked(actingUser);
-
         Comment existing = getById(commentId);
         CommentValidationHelper.validateNotDeleted(existing);
         PostValidationHelper.validateNotDeleted(existing.getPost());
-
         AuthorizationHelper.validateOwner(actingUser, existing.getAuthor());
 
         existing.setContent(updatedComment.getContent());
@@ -123,7 +111,6 @@ public class CommentServiceImpl implements CommentService {
     @Transactional
     public void delete(Long commentId, User actingUser) {
         AuthorizationHelper.validateNotBlocked(actingUser);
-
         Comment comment = getById(commentId);
         CommentValidationHelper.validateNotDeleted(comment);
         AuthorizationHelper.validateOwnerOrAdmin(actingUser, comment.getAuthor());
@@ -132,59 +119,66 @@ public class CommentServiceImpl implements CommentService {
         commentRepository.save(comment);
 
         if (actingUser.isAdmin()) {
-            notificationService.send(
-                    actingUser,
-                    comment.getAuthor(),
-                    commentId,
-                    "COMMENT",
-                    "DELETED"
-            );
+            notificationService.send(actingUser, comment.getAuthor(), commentId, "COMMENT", "DELETED");
         }
     }
 
     @Override
     @Transactional
-    public void likeComment(Long commentId, User actingUser) {
-        AuthorizationHelper.validateNotBlocked(actingUser);
+    public void likeComment(Long commentId, User actingUserParam) {
+        // 1. RELOAD USER & COMMENT (CRITICAL FIX)
+        User actingUser = userRepository.findById(actingUserParam.getId())
+                .orElseThrow(() -> new EntityNotFoundException("User", actingUserParam.getId()));
 
-        Comment comment = getById(commentId);
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new EntityNotFoundException("Comment", commentId));
+
+        // 2. Validations
+        AuthorizationHelper.validateNotBlocked(actingUser);
         CommentValidationHelper.validateNotDeleted(comment);
         ActionValidationHelper.validateCanLike(actingUser, comment);
 
-        actingUser.getLikedComments().add(comment);
-        comment.getLikedByUsers().add(actingUser);
+        // 3. Logic
+        if (!comment.getLikedByUsers().contains(actingUser)) {
+            actingUser.getLikedComments().add(comment);
+            comment.getLikedByUsers().add(actingUser);
 
-        userRepository.save(actingUser);
+            userRepository.save(actingUser);
+            commentRepository.save(comment);
 
-        notificationService.send(
-                actingUser,
-                comment.getAuthor(),
-                commentId,
-                "COMMENT",
-                "LIKE"
-        );
+            notificationService.send(actingUser, comment.getAuthor(), commentId, "COMMENT", "LIKE");
+        }
     }
 
     @Override
     @Transactional
-    public void unlikeComment(Long commentId, User actingUser) {
-        AuthorizationHelper.validateNotBlocked(actingUser);
+    public void unlikeComment(Long commentId, User actingUserParam) {
+        // 1. RELOAD USER & COMMENT (CRITICAL FIX)
+        User actingUser = userRepository.findById(actingUserParam.getId())
+                .orElseThrow(() -> new EntityNotFoundException("User", actingUserParam.getId()));
 
-        Comment comment = getById(commentId);
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new EntityNotFoundException("Comment", commentId));
+
+        // 2. Validations
+        AuthorizationHelper.validateNotBlocked(actingUser);
         CommentValidationHelper.validateNotDeleted(comment);
         ActionValidationHelper.validateCanUnlike(actingUser, comment);
 
-        actingUser.getLikedComments().remove(comment);
-        comment.getLikedByUsers().remove(actingUser);
+        // 3. Logic (Explicit removal)
+        if (comment.getLikedByUsers().contains(actingUser)) {
+            actingUser.getLikedComments().remove(comment);
+            comment.getLikedByUsers().remove(actingUser);
 
-        userRepository.save(actingUser);
+            userRepository.save(actingUser);
+            commentRepository.save(comment);
+        }
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<Comment> getReplies(Long parentCommentId) {
-        List<Comment> replies = commentRepository.findByParentCommentId(parentCommentId);
-        return replies.stream()
+        return commentRepository.findByParentCommentId(parentCommentId).stream()
                 .filter(c -> !c.isDeleted())
                 .toList();
     }

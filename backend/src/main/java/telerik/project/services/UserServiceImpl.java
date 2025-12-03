@@ -3,6 +3,7 @@ package telerik.project.services;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import telerik.project.exceptions.EntityDuplicateException;
 import telerik.project.exceptions.EntityNotFoundException;
 import telerik.project.helpers.AuthorizationHelper;
 import telerik.project.helpers.validators.ActionValidationHelper;
@@ -193,35 +194,55 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public void followUser(Long targetUserId, User actingUser) {
+    public void followUser(Long id, User actingUserParam) {
+        // 1. ПРЕЗАРЕЖДАНЕ НА ACTING USER (За да избегнем LazyInitializationException)
+        User actingUser = userRepository.findById(actingUserParam.getId())
+                .orElseThrow(() -> new EntityNotFoundException("User", actingUserParam.getId()));
+
+        // 2. Намираме човека, когото искаме да последваме
+        User userToFollow = userRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("User", id));
+
+        // Валидации
         AuthorizationHelper.validateNotBlocked(actingUser);
-        AuthorizationHelper.validateSelfOperationNotAllowed(actingUser, targetUserId);
+        AuthorizationHelper.validateNotBlocked(userToFollow);
+        AuthorizationHelper.validateSelfOperationNotAllowed(actingUser, id);
 
-        User target = getById(targetUserId);
-        ActionValidationHelper.validateCanFollow(actingUser, target);
+        // Логика
+        if (actingUser.getFollowing().contains(userToFollow)) {
+            // Тук използваме твоя къстъм ексепшън
+            throw new EntityDuplicateException("User", "follow relationship", "already exists");
+        }
 
-        actingUser.getFollowing().add(target);
+        actingUser.getFollowing().add(userToFollow);
         userRepository.save(actingUser);
 
-        notificationService.send(
-                actingUser,
-                target,
-                targetUserId,
-                "USER",
-                "FOLLOW"
-        );
+        // Нотификация
+        notificationService.send(actingUser, userToFollow, actingUser.getId(), "USER", "FOLLOW");
     }
 
     @Override
     @Transactional
-    public void unfollowUser(Long targetUserId, User actingUser) {
+    public void unfollowUser(Long id, User actingUserParam) {
+        // 1. ПРЕЗАРЕЖДАНЕ НА ACTING USER
+        User actingUser = userRepository.findById(actingUserParam.getId())
+                .orElseThrow(() -> new EntityNotFoundException("User", actingUserParam.getId()));
+
+        // 2. Намираме човека за отследване
+        User userToUnfollow = userRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("User", id));
+
+        // Валидации
         AuthorizationHelper.validateNotBlocked(actingUser);
-        AuthorizationHelper.validateSelfOperationNotAllowed(actingUser, targetUserId);
+        AuthorizationHelper.validateNotBlocked(userToUnfollow);
 
-        User target = getById(targetUserId);
-        ActionValidationHelper.validateCanUnfollow(actingUser, target);
+        // Логика
+        if (!actingUser.getFollowing().contains(userToUnfollow)) {
+            // Хвърляме грешка, ако връзката не съществува
+            throw new EntityNotFoundException("Relationship", "follower", "not found");
+        }
 
-        actingUser.getFollowing().remove(target);
+        actingUser.getFollowing().remove(userToUnfollow);
         userRepository.save(actingUser);
     }
 
