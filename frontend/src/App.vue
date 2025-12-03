@@ -12,6 +12,17 @@ const router = useRouter();
 const topPosts = ref([]);
 const isTrendingExpanded = ref(false);
 
+// Check if user is admin (Robust check: Store OR LocalStorage)
+const isAdmin = computed(() => {
+  if (authStore.user?.role === 'ADMIN') return true;
+  try {
+    const stored = JSON.parse(localStorage.getItem('user'));
+    return stored?.role === 'ADMIN';
+  } catch (e) {
+    return false;
+  }
+});
+
 const visibleTrendingPosts = computed(() => {
   if (isTrendingExpanded.value) {
     return topPosts.value;
@@ -23,7 +34,7 @@ const visibleTrendingPosts = computed(() => {
 const handleLogout = async () => {
   notifStore.stopPolling();
   await authStore.logout();
-  router.push('/');
+  await router.push('/');
 };
 
 onMounted(async () => {
@@ -46,6 +57,16 @@ onMounted(async () => {
         <h1 class="logo">StudyFlow <span class="dot">.</span></h1>
       </div>
 
+      <div class="logo-container"><h1 class="logo">StudyFlow <span class="dot">.</span></h1></div>
+
+      <!-- USER INFO -->
+      <div v-if="authStore.user" class="user-welcome">
+        <div class="welcome-text">
+          Hello, {{ authStore.user.firstName }}
+          <span v-if="isAdmin" class="admin-badge-sidebar">Admin 👑</span>
+        </div>
+      </div>
+
       <nav class="nav-menu">
         <RouterLink to="/" class="nav-item">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="nav-icon">
@@ -53,6 +74,27 @@ onMounted(async () => {
           </svg>
           Home
         </RouterLink>
+
+        <!-- LOGGED IN MENU -->
+        <template v-if="authStore.user">
+          <RouterLink to="/notifications" class="nav-item">
+            <div class="icon-wrapper">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="nav-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" /></svg>
+              <span v-if="notifStore.unreadCount > 0" class="notif-badge">{{ notifStore.unreadCount > 9 ? '9+' : notifStore.unreadCount }}</span>
+            </div> Notifications
+          </RouterLink>
+
+          <RouterLink to="/profile" class="nav-item"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="nav-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg> Profile</RouterLink>
+
+          <!-- ADMIN DASHBOARD LINK (Only if Admin) -->
+          <RouterLink v-if="isAdmin" to="/admin/users" class="nav-item admin-link">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="nav-icon">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+            </svg>
+            User Management
+          </RouterLink>
+
+          <button @click="handleLogout" class="nav-item logout-btn"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="nav-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" /></svg> Logout</button>
 
         <RouterLink v-if="authStore.user" to="/notifications" class="nav-item">
           <div class="icon-wrapper">
@@ -81,6 +123,8 @@ onMounted(async () => {
           </RouterLink>
         </template>
 
+
+        <!-- LOGGED OUT MENU -->
         <template v-else>
           <RouterLink to="/profile" class="nav-item">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="nav-icon">
@@ -94,8 +138,12 @@ onMounted(async () => {
             </svg>
             Logout
           </button>
+          <RouterLink to="/login" class="nav-item"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="nav-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg> Login</RouterLink>
+          <RouterLink to="/register" class="nav-item"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="nav-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM4 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 0110.374 21c-2.331 0-4.512-.645-6.374-1.766z" /></svg> Register</RouterLink>
         </template>
       </nav>
+
+      <RouterLink v-if="authStore.user" to="/profile" class="user-mini-profile-link">
 
       <router-link
           v-if="authStore.user"
@@ -117,7 +165,7 @@ onMounted(async () => {
             <span class="profile-label">View Profile</span>
           </div>
         </div>
-      </router-link>
+      </RouterLink>
     </aside>
 
     <main class="content">
@@ -141,6 +189,7 @@ onMounted(async () => {
             No active discussions yet.
           </li>
           <li v-for="post in visibleTrendingPosts" :key="post.id" class="trend-item">
+            <div class="trend-meta"><RouterLink :to="`/profile/${post.author.id}`" class="trend-author">@{{ post.author.username }}</RouterLink></div>
             <div class="trend-meta">
               <router-link :to="`/profile/${post.author.id}`" class="trend-author">
                 @{{ post.author.username }}
@@ -167,6 +216,10 @@ onMounted(async () => {
           @click="router.push('/notifications')"
       >
         <div class="toast-icon-box" :class="notifStore.popupData.type">
+          <!-- Icons ... -->
+          <svg v-if="notifStore.popupData.type && notifStore.popupData.type.includes('LIKE')" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.75 3c1.99 0 3.969 1.356 5.25 3.34C14.281 4.356 16.261 3 18.25 3c3.036 0 5.5 2.322 5.5 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" /></svg>
+          <svg v-else-if="notifStore.popupData.type && notifStore.popupData.type.includes('FOLLOW')" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clip-rule="evenodd" /></svg>
+          <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M4.804 21.644A6.707 6.707 0 006 21.75a6.721 6.721 0 003.583-1.029c.774.182 1.584.279 2.417.279 5.322 0 9.75-3.97 9.75-9 0-5.03-4.428-9-9.75-9s-9.75 3.97-9.75 9c0 2.409 1.025 4.587 2.674 6.192.232.226.277.428.254.543a3.73 3.73 0 01-.814 1.686.75.75 0 00.44 1.223zM8.25 10.875a1.125 1.125 0 100 2.25 1.125 1.125 0 000-2.25zM10.875 12a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0zm4.875-1.125a1.125 1.125 0 100 2.25 1.125 1.125 0 000-2.25z" clip-rule="evenodd" /></svg>
           <svg v-if="notifStore.popupData.type && notifStore.popupData.type.includes('LIKE')" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.75 3c1.99 0 3.969 1.356 5.25 3.34C14.281 4.356 16.261 3 18.25 3c3.036 0 5.5 2.322 5.5 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" /></svg>
           <svg v-else-if="notifStore.popupData.type && notifStore.popupData.type.includes('FOLLOW')" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clip-rule="evenodd" /></svg>
           <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M4.804 21.644A6.707 6.707 0 006 21.75a6.721 6.721 0 003.583-1.029c.774.182 1.584.279 2.417.279 5.322 0 9.75-3.97 9.75-9 0-5.03-4.428-9-9.75-9s-9.75 3.97-9.75 9c0 2.409 1.025 4.587 2.674 6.192.232.226.277.428.254.543a3.73 3.73 0 01-.814 1.686.75.75 0 00.44 1.223zM8.25 10.875a1.125 1.125 0 100 2.25 1.125 1.125 0 000-2.25zM10.875 12a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0zm4.875-1.125a1.125 1.125 0 100 2.25 1.125 1.125 0 000-2.25z" clip-rule="evenodd" /></svg>
@@ -181,6 +234,20 @@ onMounted(async () => {
   </div>
 </template>
 
+<!-- 1. Global Animation Styles (No 'scoped') -->
+<style>
+/* noinspection CssUnusedSymbol */
+.router-link-active { color: var(--color-accent); font-weight: 700; }
+/* noinspection CssUnusedSymbol */
+.router-link-active .nav-icon { stroke-width: 2.2; }
+
+/* noinspection CssUnusedSymbol */
+.toast-enter-active, .toast-leave-active { transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+/* noinspection CssUnusedSymbol */
+.toast-enter-from, .toast-leave-to { transform: translateX(50px); opacity: 0; }
+</style>
+
+<!-- 2. Scoped Styles -->
 <style scoped>
 * { box-sizing: border-box; }
 .app-layout { display: grid; grid-template-columns: 280px 1fr 350px; min-height: 100vh; width: 100%; margin: 0; max-width: none; }
@@ -211,8 +278,7 @@ onMounted(async () => {
 .nav-item { display: flex; align-items: center; gap: 16px; font-size: 19px; font-weight: 500; text-decoration: none; color: #aeb5bc; padding: 14px 20px; border-radius: 30px; transition: all 0.2s ease; border: none; background: none; width: 100%; text-align: left; cursor: pointer; position: relative; }
 .nav-item:hover { background-color: rgba(255, 255, 255, 0.1); color: var(--color-white); }
 .nav-icon { width: 26px; height: 26px; color: inherit; }
-.router-link-active { color: var(--color-accent); font-weight: 700; }
-.router-link-active .nav-icon { stroke-width: 2.2; }
+
 .icon-wrapper { position: relative; display: flex; align-items: center; }
 .notif-badge { position: absolute; top: -5px; right: -5px; background-color: #ef4444; color: white; font-size: 10px; font-weight: bold; padding: 2px 5px; border-radius: 10px; border: 2px solid var(--color-dark); }
 .logout-btn { color: #ef4444; margin-top: auto; }
@@ -226,6 +292,37 @@ onMounted(async () => {
 .username { font-size: 14px; font-weight: 700; color: var(--color-white); }
 .profile-label { font-size: 12px; color: #aeb5bc; }
 
+/* ADMIN STYLE ADDITIONS */
+.admin-link { color: #22c55e !important; }
+.admin-link:hover { background-color: rgba(34, 197, 94, 0.1) !important; }
+.admin-badge-sidebar {
+  background-color: #22c55e; color: white; font-size: 10px; padding: 2px 6px;
+  border-radius: 4px; font-weight: bold; margin-left: 8px; vertical-align: middle;
+}
+.user-welcome { padding: 0 15px 20px 15px; }
+.welcome-text { color: #aeb5bc; font-size: 14px; font-weight: 600; }
+
+.toast-notification {
+  position: fixed; bottom: 30px; right: 30px;
+  background-color: white;
+  color: var(--color-dark);
+  padding: 15px 20px;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  border: 1px solid #f1f1f1;
+  z-index: 2000;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  max-width: 350px;
+}
+
+.toast-icon-box {
+  width: 35px; height: 35px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
 /* TOAST */
 .toast-notification { position: fixed; bottom: 30px; right: 30px; background-color: white; color: var(--color-dark); padding: 15px 20px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border: 1px solid #f1f1f1; z-index: 2000; cursor: pointer; display: flex; align-items: center; gap: 15px; max-width: 350px; }
 .toast-icon-box { width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
@@ -239,6 +336,7 @@ onMounted(async () => {
 .toast-enter-active, .toast-leave-active { transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 .toast-enter-from, .toast-leave-to { transform: translateX(50px); opacity: 0; }
 
+
 .content { padding: 0; border-right: 1px solid rgba(0,0,0,0.05); border-left: 1px solid rgba(0,0,0,0.05); width: 100%; }
 .trending { padding: 30px 40px 30px 20px; }
 .trending-card { background-color: var(--color-white); border-radius: 16px; padding: 20px; box-shadow: var(--shadow-card); border: 1px solid rgba(0,0,0,0.05); }
@@ -250,7 +348,14 @@ onMounted(async () => {
 .trend-meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--color-text-muted); margin-bottom: 4px; }
 .trend-author { font-weight: 600; color: var(--color-text-muted); text-decoration: none; }
 .trend-author:hover { text-decoration: underline; color: var(--color-dark); }
-.trend-title { margin: 0; font-size: 14px; font-weight: 700; color: var(--color-dark); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.trend-title {
+  margin: 0; font-size: 14px; font-weight: 700; color: var(--color-dark); line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .trend-status { font-size: 11px; color: var(--color-accent); font-weight: 600; margin-top: 4px; display: inline-block; }
 .empty-trend { color: var(--color-text-muted); font-size: 14px; text-align: center; padding: 20px 0; }
 .show-more-btn { background: none; border: none; color: var(--color-accent); font-size: 13px; font-weight: 700; cursor: pointer; padding: 15px 0 0 0; width: 100%; text-align: left; transition: color 0.2s; display: block; }

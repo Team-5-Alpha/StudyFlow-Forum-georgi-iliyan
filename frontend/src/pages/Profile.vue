@@ -1,16 +1,19 @@
 <script setup>
+// ... existing imports ...
 import { ref, onMounted, computed, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, RouterLink } from 'vue-router';
 import { useAuthStore } from '../stores/auth.store';
 import usersService from '../services/users.service';
 import PostCard from '../components/PostCard.vue';
+import adminService from '../services/admin.service';
+import PostItem from '../components/PostItem.vue';
 import PasswordConfirmModal from '../components/PasswordConfirmModal.vue';
 import { getAuth, updateEmail, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 
 const route = useRoute();
 const authStore = useAuthStore();
 
-// State
+// ... existing state ...
 const profile = ref(null);
 const posts = ref([]);
 const followersList = ref([]);
@@ -20,8 +23,6 @@ const error = ref(null);
 const isFollowLoading = ref(false);
 const isEditing = ref(false);
 const editForm = ref({ firstName: '', lastName: '', email: '', password: '', profilePhotoURL: '' });
-
-// Password Modal State
 const isPasswordModalOpen = ref(false);
 let passwordResolve = null;
 
@@ -30,26 +31,51 @@ const successMessage = ref(null);
 
 // Computed
 const isCurrentUser = computed(() => authStore.user && profile.value && authStore.user.id === profile.value.id);
+
+// UPDATED: Robust Admin Check
+const isAdmin = computed(() => {
+    const u = authStore.user;
+    return u?.role === 'ADMIN' || u?.username === 'admin'; // Fallback for missing role field
+});
+
 const isFollowing = computed(() => authStore.user && followersList.value && followersList.value.some(user => user.id === authStore.user.id));
 const formatDate = (dateString) => new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
 // Fetch Profile
+const fetchProfileData = async () => {
+// ... existing fetchProfileData ...
 const fetchProfileData = async () => {
   loading.value = true;
   error.value = null;
   const targetId = route.params.id || authStore.user?.id;
   if (!targetId) { error.value = "User not found."; loading.value = false; return; }
   try {
-    const [userRes, postsRes, followersRes, followingRes] = await Promise.all([
-      usersService.getById(targetId),
+    const userRes = await usersService.getById(targetId);
+    let userData = userRes.data;
+
+    // Force fetch admin details if we are admin
+    if (isAdmin.value && authStore.user?.id !== userData.id) {
+        try {
+            const adminRes = await adminService.search({ username: userData.username });
+            const adminDetails = adminRes.data.find(u => u.id === userData.id);
+            if (adminDetails) {
+                userData = { ...userData, ...adminDetails };
+            }
+        } catch (e) {
+            console.error("Failed to fetch admin details", e);
+        }
+    }
+    profile.value = userData;
+
+    const [postsRes, followersRes, followingRes] = await Promise.all([
       usersService.getPostsByUser(targetId),
       usersService.getFollowers(targetId),
       usersService.getFollowing(targetId)
     ]);
-    profile.value = userRes.data;
     posts.value = postsRes.data;
     followersList.value = followersRes.data;
     followingList.value = followingRes.data;
+
     editForm.value = {
       firstName: profile.value.firstName,
       lastName: profile.value.lastName,
@@ -57,9 +83,12 @@ const fetchProfileData = async () => {
       password: '',
       profilePhotoURL: profile.value.profilePhotoURL || ''
     };
-  } catch (err) { error.value = "Failed to load profile."; } finally { loading.value = false; }
+  } catch (err) { console.error(err); error.value = "Failed to load profile."; } finally { loading.value = false; }
 };
 
+// ... rest of the script (actions, saveProfile, etc.) ...
+// Copy the toggleFollow, handleBlock, handleUnblock, handlePromote, saveProfile from previous response
+const toggleFollow = async () => {
 const toggleFollow = async () => {
   if (isFollowLoading.value || !profile.value) return;
   isFollowLoading.value = true;
@@ -69,19 +98,25 @@ const toggleFollow = async () => {
   } catch (err) { alert("Action failed: " + err.message); } finally { isFollowLoading.value = false; }
 };
 
-// Modal Logic
+const handleBlock = async () => {
+  if (!confirm("Block this user?")) return;
+  try { await adminService.blockUser(profile.value.id); profile.value.isBlocked = true; showSuccess("User blocked."); } catch (error) { alert("Failed."); }
+};
+const handleUnblock = async () => {
+  try { await adminService.unblockUser(profile.value.id); profile.value.isBlocked = false; showSuccess("User unblocked."); } catch (error) { alert("Failed."); }
+};
+const handlePromote = async () => {
+  if (!confirm("Promote to Admin?")) return;
+  try { await adminService.promoteUser(profile.value.id); profile.value.role = 'ADMIN'; showSuccess("Promoted to Admin."); } catch (error) { alert("Failed."); }
+};
+
 const askForPassword = () => { isPasswordModalOpen.value = true; return new Promise((resolve) => { passwordResolve = resolve; }); };
 const onPasswordConfirm = (password) => { isPasswordModalOpen.value = false; if (passwordResolve) passwordResolve(password); };
 const onPasswordCancel = () => { isPasswordModalOpen.value = false; if (passwordResolve) passwordResolve(null); };
+const showSuccess = (msg) => { successMessage.value = msg; setTimeout(() => { successMessage.value = null; }, 3000); };
 
-// Helper за Success Toast
-const showSuccess = (msg) => {
-  successMessage.value = msg;
-  setTimeout(() => { successMessage.value = null; }, 3000);
-};
-
-// SAVE PROFILE
 const saveProfile = async () => {
+  // ... (Keep existing saveProfile logic) ...
   const auth = getAuth();
   const firebaseUser = auth.currentUser;
   const emailChanged = editForm.value.email !== profile.value.email;
@@ -91,8 +126,11 @@ const saveProfile = async () => {
     if (emailChanged || passwordChanged) {
       const currentPass = await askForPassword();
       if (!currentPass) throw new Error("Action cancelled.");
+      if (!currentPass) return;
       const credential = EmailAuthProvider.credential(firebaseUser.email, currentPass);
       await reauthenticateWithCredential(firebaseUser, credential);
+      if (emailChanged) await updateEmail(firebaseUser, editForm.value.email);
+      if (passwordChanged) await updatePassword(firebaseUser, editForm.value.password);
     }
 
     const updatePayload = {
@@ -106,6 +144,8 @@ const saveProfile = async () => {
       updatePayload.password = editForm.value.password;
     }
 
+    const updatePayload = { firstName: editForm.value.firstName, lastName: editForm.value.lastName, email: editForm.value.email, profilePhotoURL: editForm.value.profilePhotoURL || null };
+    if (passwordChanged) updatePayload.password = editForm.value.password;
     const updatedUser = await usersService.update(profile.value.id, updatePayload);
 
     if (emailChanged) {
@@ -118,11 +158,7 @@ const saveProfile = async () => {
 
     profile.value = updatedUser.data;
     isEditing.value = false;
-
-    if (isCurrentUser.value) {
-      authStore.user = updatedUser.data;
-      localStorage.setItem('user', JSON.stringify(updatedUser.data));
-    }
+    if (isCurrentUser.value) { authStore.user = updatedUser.data; localStorage.setItem('user', JSON.stringify(updatedUser.data)); }
     editForm.value.password = '';
     showSuccess("Profile updated successfully!");
 
@@ -142,6 +178,8 @@ const saveProfile = async () => {
 // --- НОВО: Изтриване на пост ---
 const removePost = (postId) => {
   posts.value = posts.value.filter(p => p.id !== postId);
+    showSuccess("Profile updated!");
+  } catch (err) { console.error(err); alert("Error: " + err.message); }
 };
 
 watch(() => route.params.id, () => { fetchProfileData(); });
@@ -158,19 +196,34 @@ onMounted(() => { fetchProfileData(); });
         <div class="cover-photo"></div>
         <div class="profile-info-row">
           <div class="profile-avatar-large"><img v-if="profile.profilePhotoURL" :src="profile.profilePhotoURL" alt="Avatar" class="avatar-img" /><span v-else>{{ profile.username.charAt(0).toUpperCase() }}</span></div>
-          <div class="profile-actions">
-            <button v-if="isCurrentUser" @click="isEditing = !isEditing" class="btn-outline">{{ isEditing ? 'Cancel Edit' : 'Edit Profile' }}</button>
-            <button v-else @click="toggleFollow" class="btn-primary" :class="{ 'btn-following': isFollowing }" :disabled="isFollowLoading">{{ isFollowing ? 'Unfollow' : 'Follow' }}</button>
+
+          <div class="profile-actions-wrapper">
+            <div class="profile-actions">
+              <button v-if="isCurrentUser" @click="isEditing = !isEditing" class="btn-outline">{{ isEditing ? 'Cancel Edit' : 'Edit Profile' }}</button>
+              <button v-else @click="toggleFollow" class="btn-primary" :class="{ 'btn-following': isFollowing }" :disabled="isFollowLoading">{{ isFollowing ? 'Unfollow' : 'Follow' }}</button>
+            </div>
+
+             <!-- Admin Controls -->
+             <div v-if="isAdmin && !isCurrentUser" class="admin-controls">
+                <button v-if="profile.isBlocked" @click="handleUnblock" class="btn-sm btn-warning">Unblock</button>
+                <button v-else @click="handleBlock" class="btn-sm btn-danger">Block</button>
+                <button v-if="profile.role !== 'ADMIN'" @click="handlePromote" class="btn-sm btn-info">Promote Admin</button>
+             </div>
           </div>
         </div>
+
         <div class="profile-details">
-          <h2 class="profile-name">{{ profile.firstName }} {{ profile.lastName }}</h2>
+          <h2 class="profile-name">
+            {{ profile.firstName }} {{ profile.lastName }}
+            <span v-if="profile.role === 'ADMIN'" class="admin-badge">Admin 👑</span>
+            <span v-if="profile.isBlocked" class="blocked-badge">BLOCKED</span>
+          </h2>
           <div class="profile-handle">@{{ profile.username }}</div>
           <div class="profile-dates">📅 Joined {{ formatDate(profile.createdAt) }}</div>
           <div class="profile-stats">
             <span><strong>{{ posts.length }}</strong> Posts</span>
-            <router-link :to="`/profile/${profile.id}/followers`" class="stat-link"><strong>{{ followersList.length }}</strong> Followers</router-link>
-            <router-link :to="`/profile/${profile.id}/following`" class="stat-link"><strong>{{ followingList.length }}</strong> Following</router-link>
+            <RouterLink :to="`/profile/${profile.id}/followers`" class="stat-link"><strong>{{ followersList.length }}</strong> Followers</RouterLink>
+            <RouterLink :to="`/profile/${profile.id}/following`" class="stat-link"><strong>{{ followingList.length }}</strong> Following</RouterLink>
           </div>
         </div>
       </div>
@@ -183,7 +236,7 @@ onMounted(() => { fetchProfileData(); });
             <div class="form-group"><label>Last Name</label><input v-model="editForm.lastName" type="text" required minlength="4" maxlength="32" /></div>
           </div>
           <div class="form-group"><label>Email Address</label><input v-model="editForm.email" type="email" required minlength="6" maxlength="128" /></div>
-          <div class="form-group"><label>New Password</label><input v-model="editForm.password" type="password" placeholder="Min 6 characters" minlength="6" maxlength="128" autocomplete="new-password" /><small style="color: #888;">Only fill this if you want to change your password.</small></div>
+          <div class="form-group"><label>New Password</label><input v-model="editForm.password" type="password" placeholder="Min 6 characters" minlength="6" maxlength="128" autocomplete="new-password" /><small>Only fill if changing password.</small></div>
           <div class="form-group"><label>Profile Photo URL</label><input v-model="editForm.profilePhotoURL" type="url" placeholder="https://..." maxlength="255" /></div>
           <button type="submit" class="btn-primary" style="margin-top: 10px;">Save Changes</button>
         </form>
@@ -207,32 +260,83 @@ onMounted(() => { fetchProfileData(); });
     <transition name="fade-slide">
       <div v-if="successMessage" class="success-toast">
         <div class="check-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-          </svg>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
         </div>
         <span>{{ successMessage }}</span>
       </div>
     </transition>
-
   </div>
 </template>
 
+<style>
+/* noinspection CssUnusedSymbol */
+.fade-slide-enter-active, .fade-slide-leave-active { transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+/* noinspection CssUnusedSymbol */
+.fade-slide-enter-from, .fade-slide-leave-to { opacity: 0; transform: translate(-50%, 20px); }
+</style>
+
+<style scoped>
+/* Same styles as before */
+.success-toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background-color: var(--color-dark); color: white; padding: 12px 24px; border-radius: 50px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 12px; font-weight: 600; font-size: 15px; z-index: 2000; }
+.check-icon { width: 24px; height: 24px; background-color: #22c55e; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.check-icon svg { width: 14px; height: 14px; color: white; }
 <style scoped>
 .profile-container { padding-bottom: 40px; }
 .profile-header-card { background-color: var(--color-white); border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 20px; margin-bottom: 20px; }
-.cover-photo { height: 150px; background-color: var(--color-dark); background: linear-gradient(45deg, var(--color-dark), #2c3e50); }
-.profile-info-row { display: flex; justify-content: space-between; align-items: flex-end; padding: 0 20px; margin-top: -50px; }
-.profile-avatar-large { width: 100px; height: 100px; border-radius: 50%; border: 4px solid var(--color-white); background-color: var(--color-accent); color: var(--color-white); display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: 800; overflow: hidden; }
+.cover-photo { height: 150px; background: linear-gradient(45deg, var(--color-dark), #2c3e50); }
+
+/* Layout Fix */
+.profile-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 0 20px;
+  margin-top: -50px;
+  position: relative; /* Ensure stacking context */
+}
+
+.profile-avatar-large { width: 100px; height: 100px; border-radius: 50%; border: 4px solid var(--color-white); background-color: var(--color-accent); color: var(--color-white); display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: 800; overflow: hidden; flex-shrink: 0;}
 .avatar-img { width: 100%; height: 100%; object-fit: cover; }
-.btn-outline { border: 1px solid var(--color-dark); background: transparent; padding: 8px 16px; border-radius: 20px; font-weight: 600; cursor: pointer; margin-bottom: 10px; transition: all 0.2s; }
+
+.profile-actions-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  margin-bottom: 5px; /* Adjusted margin */
+}
+
+.profile-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.admin-controls {
+  display: flex;
+  gap: 8px;
+  background: #f8fafc;
+  padding: 5px;
+  border-radius: 8px;
+  margin-top: 5px;
+}
+
+.btn-outline { border: 1px solid var(--color-dark); background: transparent; padding: 8px 16px; border-radius: 20px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
 .btn-outline:hover { background: rgba(0,0,0,0.05); }
-.btn-primary { background: var(--color-dark); color: white; border: none; padding: 8px 20px; border-radius: 20px; font-weight: 600; cursor: pointer; margin-bottom: 10px; transition: all 0.2s; }
+.btn-primary { background: var(--color-dark); color: white; border: none; padding: 8px 20px; border-radius: 20px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
 .btn-primary:hover { opacity: 0.9; }
 .btn-following { background: transparent; border: 1px solid #ef4444; color: #ef4444; }
 .btn-following:hover { background: #fee2e2; }
+.btn-sm { padding: 5px 12px; font-size: 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; }
+.btn-danger { background: #fee2e2; color: #ef4444; }
+.btn-danger:hover { background: #fecaca; }
+.btn-warning { background: #fef3c7; color: #d97706; }
+.btn-warning:hover { background: #fde68a; }
+.btn-info { background: #e0f2fe; color: #0284c7; }
+.btn-info:hover { background: #bae6fd; }
 .profile-details { padding: 10px 20px; }
-.profile-name { margin: 10px 0 0 0; font-size: 24px; color: var(--color-dark); }
+.profile-name { margin: 10px 0 0 0; font-size: 24px; color: var(--color-dark); display: flex; align-items: center; gap: 10px; }
+.admin-badge { background: #22c55e; color: white; font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: bold; vertical-align: middle; }
+.blocked-badge { background: #ef4444; color: white; font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: bold; vertical-align: middle; }
 .profile-handle { color: var(--color-text-muted); margin-bottom: 10px; font-weight: 500; }
 .profile-dates { font-size: 14px; color: #64748b; margin-bottom: 15px; }
 .profile-stats { display: flex; gap: 20px; font-size: 14px; }
