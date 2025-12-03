@@ -2,6 +2,8 @@ import apiClient from './axios-config';
 
 const RESOURCE = '/admin/users';
 
+
+
 export default {
     search(filterOptions) {
         return apiClient.get(RESOURCE, { params: filterOptions });
@@ -22,4 +24,6 @@ export default {
     promoteUser(id) {
         return apiClient.put(`${RESOURCE}/${id}/promote`);
     }
+
+
 };
