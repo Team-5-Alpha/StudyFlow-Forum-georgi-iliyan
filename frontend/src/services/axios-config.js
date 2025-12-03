@@ -1,43 +1,27 @@
 import axios from 'axios';
-import { useAuthStore } from '../stores/auth.store';
-
-const API_URL = 'http://localhost:8080/api';
 
 const apiClient = axios.create({
-    baseURL: API_URL,
+    baseURL: 'http://localhost:8080/api', // Adjust if your port is different
     headers: {
-        'Content-Type': 'application/json',
-    },
+        'Content-Type': 'application/json'
+    }
 });
 
-apiClient.interceptors.request.use(
-    (config) => {
+apiClient.interceptors.request.use(config => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
         try {
-            const authStore = useAuthStore();
-            const userId = authStore.currentUserId;
-
-            if (userId) {
-                config.headers['X-User-Id'] = userId;
+            const user = JSON.parse(userStr);
+            if (user && user.id) {
+                config.headers['X-User-Id'] = user.id;
             }
         } catch (e) {
-            const storedUser = JSON.parse(localStorage.getItem('user'));
-            if (storedUser?.id) {
-                config.headers['X-User-Id'] = storedUser.id;
-            }
+            console.error("Error parsing user from local storage", e);
         }
-
-        return config;
-    },
-    (error) => {
-        return Promise.reject(error);
     }
-);
-
-apiClient.interceptors.response.use(
-    (response) => response,
-    (error) => {
-        return Promise.reject(error);
-    }
-);
+    return config;
+}, error => {
+    return Promise.reject(error);
+});
 
 export default apiClient;

@@ -42,6 +42,7 @@ public class UserMapper {
     public UserResponseDTO toResponse(User user) {
         UserResponseDTO dto = new UserResponseDTO();
         fillBaseResponse(dto, user);
+        dto.setRole(user.getRole().toString()); // ADD THIS LINE
         return dto;
     }
 
