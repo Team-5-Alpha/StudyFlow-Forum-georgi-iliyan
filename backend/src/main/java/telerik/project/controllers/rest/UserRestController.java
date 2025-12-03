@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import telerik.project.helpers.AuthenticationHelper; // <--- НОВО
 import telerik.project.helpers.mappers.PostMapper;
 import telerik.project.helpers.mappers.UserMapper;
 import telerik.project.models.User;
@@ -75,6 +76,7 @@ public class UserRestController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public UserResponseDTO create(@Valid @RequestBody UserCreateDTO dto) {
+        // ТОВА Е ПУБЛИЧНО (РЕГИСТРАЦИЯ) - НЕ ИСКАМЕ ТОКЕН
         User user = userMapper.fromCreateDTO(dto);
         userService.create(user);
         return userMapper.toResponse(user);
@@ -82,11 +84,10 @@ public class UserRestController {
 
     @PutMapping("/{id}")
     public UserResponseDTO update(
-            @RequestHeader("X-User-Id") Long actingUserId,
             @PathVariable Long id,
             @Valid @RequestBody UserUpdateDTO dto
     ) {
-        User actingUser = userService.getById(actingUserId);
+        User actingUser = AuthenticationHelper.getLoggedUser();
         User target = userService.getById(id);
 
         userMapper.updateUser(target, dto);
@@ -97,31 +98,22 @@ public class UserRestController {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(
-            @RequestHeader("X-User-Id") Long actingUserId,
-            @PathVariable Long id
-    ) {
-        User actingUser = userService.getById(actingUserId);
+    public void delete(@PathVariable Long id) {
+        User actingUser = AuthenticationHelper.getLoggedUser();
         userService.delete(id, actingUser);
     }
 
     @PostMapping("/{id}/follow")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void follow(
-            @RequestHeader("X-User-Id") Long actingUserId,
-            @PathVariable Long id
-    ) {
-        User actingUser = userService.getById(actingUserId);
+    public void follow(@PathVariable Long id) {
+        User actingUser = AuthenticationHelper.getLoggedUser();
         userService.followUser(id, actingUser);
     }
 
     @DeleteMapping("/{id}/follow")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void unfollow(
-            @RequestHeader("X-User-Id") Long actingUserId,
-            @PathVariable Long id
-    ) {
-        User actingUser = userService.getById(actingUserId);
+    public void unfollow(@PathVariable Long id) {
+        User actingUser = AuthenticationHelper.getLoggedUser();
         userService.unfollowUser(id, actingUser);
     }
 }

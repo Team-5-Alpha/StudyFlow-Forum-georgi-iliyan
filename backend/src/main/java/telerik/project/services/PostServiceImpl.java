@@ -73,7 +73,10 @@ public class PostServiceImpl implements PostService {
 
     @Override
     @Transactional
-    public Post create(PostCreateDTO dto, User author) {
+    public Post create(PostCreateDTO dto, User authorParam) {
+        User author = userRepository.findById(authorParam.getId())
+                .orElseThrow(() -> new EntityNotFoundException("User", authorParam.getId()));
+
         AuthorizationHelper.validateNotBlocked(author);
 
         Post post = new Post();
@@ -117,11 +120,9 @@ public class PostServiceImpl implements PostService {
         if (dto.getTitle() != null && !dto.getTitle().isBlank()) {
             existing.setTitle(dto.getTitle());
         }
-
         if (dto.getContent() != null && !dto.getContent().isBlank()) {
             existing.setContent(dto.getContent());
         }
-
         if (dto.getTags() != null) {
             Set<Tag> resolved = dto.getTags().stream()
                     .map(NormalizationUtils::normalizeTagName)
@@ -147,53 +148,38 @@ public class PostServiceImpl implements PostService {
         postRepository.save(post);
 
         if (actingUser.isAdmin()) {
-            notificationService.send(
-                    actingUser,
-                    post.getAuthor(),
-                    postId,
-                    "POST",
-                    "DELETED"
-            );
+            notificationService.send(actingUser, post.getAuthor(), postId, "POST", "DELETED");
         }
     }
 
     @Override
     @Transactional
     public void likePost(Long postId, User actingUser) {
-        AuthorizationHelper.validateNotBlocked(actingUser);
+        Post post = postRepository.findByIdWithLikes(postId)
+                .orElseThrow(() -> new EntityNotFoundException("Post", postId));
 
-        Post post = getById(postId);
         PostValidationHelper.validateNotDeleted(post);
-        ActionValidationHelper.validateCanLike(actingUser, post);
 
-        actingUser.getLikedPosts().add(post);
-        post.getLikedByUsers().add(actingUser);
-
-        userRepository.save(actingUser);
-
-        notificationService.send(
-                actingUser,
-                post.getAuthor(),
-                postId,
-                "POST",
-                "LIKE"
-        );
+        if (!post.getLikedByUsers().contains(actingUser)) {
+            post.getLikedByUsers().add(actingUser);
+            postRepository.save(post);
+        }
     }
 
     @Override
     @Transactional
     public void unlikePost(Long postId, User actingUser) {
-        AuthorizationHelper.validateNotBlocked(actingUser);
+        Post post = postRepository.findByIdWithLikes(postId)
+                .orElseThrow(() -> new EntityNotFoundException("Post", postId));
 
-        Post post = getById(postId);
         PostValidationHelper.validateNotDeleted(post);
-        ActionValidationHelper.validateCanUnlike(actingUser, post);
 
-        actingUser.getLikedPosts().remove(post);
-        post.getLikedByUsers().remove(actingUser);
-
-        userRepository.save(actingUser);
+        if (post.getLikedByUsers().contains(actingUser)) {
+            post.getLikedByUsers().remove(actingUser);
+            postRepository.save(post);
+        }
     }
+
 
     @Override
     @Transactional(readOnly = true)
@@ -212,9 +198,7 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional(readOnly = true)
     public List<Post> getMostRecent() {
-        return postRepository.findAll(
-                        Sort.by(Sort.Direction.DESC, "createdAt")
-                ).stream()
+        return postRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt")).stream()
                 .filter(p -> !p.isDeleted())
                 .limit(10)
                 .toList();
@@ -223,8 +207,7 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional(readOnly = true)
     public List<Post> getMostCommented() {
-        return postRepository.findMostCommented()
-                .stream()
+        return postRepository.findMostCommented().stream()
                 .filter(p -> !p.isDeleted())
                 .limit(10)
                 .toList();
@@ -243,8 +226,7 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional(readOnly = true)
     public List<Post> getLikedPosts(Long userId) {
-        return postRepository.findByLikedByUsers_Id(userId)
-                .stream()
+        return postRepository.findByLikedByUsers_Id(userId).stream()
                 .filter(p -> !p.isDeleted())
                 .toList();
     }

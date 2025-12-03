@@ -1,10 +1,9 @@
 <script setup>
-// ... (Всички импорти от преди са си същите) ...
 import { ref, onMounted, computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth.store';
 import usersService from '../services/users.service';
-import PostItem from '../components/PostItem.vue';
+import PostCard from '../components/PostCard.vue';
 import PasswordConfirmModal from '../components/PasswordConfirmModal.vue';
 import { getAuth, updateEmail, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 
@@ -26,16 +25,16 @@ const editForm = ref({ firstName: '', lastName: '', email: '', password: '', pro
 const isPasswordModalOpen = ref(false);
 let passwordResolve = null;
 
-// SUCCESS TOAST STATE (НОВО)
+// SUCCESS TOAST STATE
 const successMessage = ref(null);
 
-// Computed ... (същото) ...
+// Computed
 const isCurrentUser = computed(() => authStore.user && profile.value && authStore.user.id === profile.value.id);
 const isFollowing = computed(() => authStore.user && followersList.value && followersList.value.some(user => user.id === authStore.user.id));
 const formatDate = (dateString) => new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-// Fetch Profile ... (същото) ...
-const fetchProfileData = async () => { /* ... кодът е същият ... */
+// Fetch Profile
+const fetchProfileData = async () => {
   loading.value = true;
   error.value = null;
   const targetId = route.params.id || authStore.user?.id;
@@ -61,7 +60,7 @@ const fetchProfileData = async () => { /* ... кодът е същият ... */
   } catch (err) { error.value = "Failed to load profile."; } finally { loading.value = false; }
 };
 
-const toggleFollow = async () => { /* ... кодът е същият ... */
+const toggleFollow = async () => {
   if (isFollowLoading.value || !profile.value) return;
   isFollowLoading.value = true;
   try {
@@ -92,12 +91,8 @@ const saveProfile = async () => {
     if (emailChanged || passwordChanged) {
       const currentPass = await askForPassword();
       if (!currentPass) throw new Error("Action cancelled.");
-
       const credential = EmailAuthProvider.credential(firebaseUser.email, currentPass);
       await reauthenticateWithCredential(firebaseUser, credential);
-
-      if (emailChanged) await updateEmail(firebaseUser, editForm.value.email);
-      if (passwordChanged) await updatePassword(firebaseUser, editForm.value.password);
     }
 
     const updatePayload = {
@@ -106,9 +101,20 @@ const saveProfile = async () => {
       email: editForm.value.email,
       profilePhotoURL: editForm.value.profilePhotoURL || null
     };
-    if (passwordChanged) updatePayload.password = editForm.value.password;
+
+    if (passwordChanged) {
+      updatePayload.password = editForm.value.password;
+    }
 
     const updatedUser = await usersService.update(profile.value.id, updatePayload);
+
+    if (emailChanged) {
+      await updateEmail(firebaseUser, editForm.value.email);
+      await firebaseUser.getIdToken(true);
+    }
+    if (passwordChanged) {
+      await updatePassword(firebaseUser, editForm.value.password);
+    }
 
     profile.value = updatedUser.data;
     isEditing.value = false;
@@ -118,18 +124,24 @@ const saveProfile = async () => {
       localStorage.setItem('user', JSON.stringify(updatedUser.data));
     }
     editForm.value.password = '';
-
-    // ТУК Е ПРОМЯНАТА: Показваме красивия Toast вместо alert
     showSuccess("Profile updated successfully!");
 
   } catch (err) {
     console.error(err);
     let msg = err.message;
-    if (err.code === 'auth/wrong-password') msg = "Incorrect current password.";
-    if (err.code === 'auth/email-already-in-use') msg = "Email already in use.";
     if (err.response?.data?.message) msg = err.response.data.message;
-    alert("Error: " + msg); // Грешките може да останат на alert или да направиш и Error Toast
+    alert("Error: " + msg);
+    if (msg.includes("401") || msg.includes("403")) {
+      alert("Sync error. Please logout and login again.");
+      authStore.logout();
+      window.location.href = '/login';
+    }
   }
+};
+
+// --- НОВО: Изтриване на пост ---
+const removePost = (postId) => {
+  posts.value = posts.value.filter(p => p.id !== postId);
 };
 
 watch(() => route.params.id, () => { fetchProfileData(); });
@@ -180,7 +192,13 @@ onMounted(() => { fetchProfileData(); });
       <div v-else class="posts-section">
         <h3 class="section-title">Posts by @{{ profile.username }}</h3>
         <div v-if="posts.length === 0" class="no-posts">This user hasn't posted anything yet.</div>
-        <PostItem v-for="post in posts" :key="post.id" :post="post" />
+
+        <PostCard
+            v-for="post in posts"
+            :key="post.id"
+            :post="post"
+            @post-deleted="removePost"
+        />
       </div>
     </div>
 
@@ -201,40 +219,6 @@ onMounted(() => { fetchProfileData(); });
 </template>
 
 <style scoped>
-/* (Стиловете за профила са си същите...) */
-/* Добави най-долу стиловете за Success Toast */
-
-.success-toast {
-  position: fixed;
-  bottom: 30px;
-  left: 50%;
-  transform: translateX(-50%);
-  background-color: var(--color-dark); /* Тъмен фон */
-  color: white;
-  padding: 12px 24px;
-  border-radius: 50px; /* Pill shape */
-  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-weight: 600;
-  font-size: 15px;
-  z-index: 2000;
-}
-
-.check-icon {
-  width: 24px; height: 24px;
-  background-color: #22c55e; /* Ярко зелено */
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-}
-.check-icon svg { width: 14px; height: 14px; color: white; }
-
-/* Animation */
-.fade-slide-enter-active, .fade-slide-leave-active { transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-.fade-slide-enter-from, .fade-slide-leave-to { opacity: 0; transform: translate(-50%, 20px); }
-
-/* Останалите стилове за профила си остават (profile-header-card, edit-form, etc.) */
 .profile-container { padding-bottom: 40px; }
 .profile-header-card { background-color: var(--color-white); border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 20px; margin-bottom: 20px; }
 .cover-photo { height: 150px; background-color: var(--color-dark); background: linear-gradient(45deg, var(--color-dark), #2c3e50); }
@@ -266,4 +250,10 @@ input:focus { outline: none; border-color: var(--color-accent); background: #fff
 .state-msg { padding: 40px; text-align: center; color: #888; }
 .error { color: #ef4444; }
 .no-posts { color: #888; font-style: italic; margin-top: 20px; }
+
+.success-toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background-color: var(--color-dark); color: white; padding: 12px 24px; border-radius: 50px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 12px; font-weight: 600; font-size: 15px; z-index: 2000; }
+.check-icon { width: 24px; height: 24px; background-color: #22c55e; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.check-icon svg { width: 14px; height: 14px; color: white; }
+.fade-slide-enter-active, .fade-slide-leave-active { transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+.fade-slide-enter-from, .fade-slide-leave-to { opacity: 0; transform: translate(-50%, 20px); }
 </style>

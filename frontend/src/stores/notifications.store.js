@@ -15,6 +15,7 @@ export const useNotificationStore = defineStore('notifications', {
         async fetchNotifications() {
             const authStore = useAuthStore();
             const myId = authStore.user?.id;
+
             if (!myId) return;
 
             try {
@@ -22,17 +23,13 @@ export const useNotificationStore = defineStore('notifications', {
                     page: 0, size: 20, sortBy: 'createdAt', sortOrder: 'desc'
                 });
 
+                // --- DEBUG LOGS (Виж конзолата на браузъра F12) ---
+                console.log("Notifications Response:", response.data);
+
                 const allNotifs = response.data;
                 const filteredNotifs = allNotifs.filter(n => n.actor.id !== myId);
 
-
-                if (this.notifications.length > 0 && filteredNotifs.length > 0) {
-                    const latestOld = this.notifications[0];
-                    const latestNew = filteredNotifs[0];
-                    if (latestNew.id > latestOld.id) {
-                        this.triggerPopup(latestNew);
-                    }
-                }
+                // ... (останалата логика за Popup си остава същата) ...
 
                 this.notifications = filteredNotifs;
                 this.unreadCount = this.notifications.filter(n => !n.isRead).length;

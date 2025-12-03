@@ -3,6 +3,7 @@ package telerik.project.controllers.rest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import telerik.project.helpers.AuthenticationHelper; // <--- НОВО
 import telerik.project.helpers.AuthorizationHelper;
 import telerik.project.helpers.mappers.UserMapper;
 import telerik.project.models.User;
@@ -24,7 +25,6 @@ public class AdminRestController {
 
     @GetMapping
     public List<AdminUserResponseDTO> search(
-            @RequestHeader("X-User-Id") Long actingUserId,
             @RequestParam(required = false) String username,
             @RequestParam(required = false) String firstName,
             @RequestParam(required = false) String lastName,
@@ -35,7 +35,7 @@ public class AdminRestController {
             @RequestParam(defaultValue = "0") Integer page,
             @RequestParam(defaultValue = "10") Integer size
     ) {
-        User actingUser = userService.getById(actingUserId);
+        User actingUser = AuthenticationHelper.getLoggedUser();
         AuthorizationHelper.validateAdmin(actingUser);
 
         UserFilterOptions filterOptions = new UserFilterOptions(
@@ -50,47 +50,37 @@ public class AdminRestController {
 
     @PutMapping("/{id}")
     public AdminResponseDTO update(
-            @RequestHeader("X-User-Id") Long actingUserId,
             @PathVariable Long id,
             @Valid @RequestBody AdminUpdateDTO dto
     ) {
-        User acting = userService.getById(actingUserId);
+        User actingUser = AuthenticationHelper.getLoggedUser();
         User target = userService.getById(id);
 
         userMapper.updateAdmin(target, dto);
-        userService.update(id, target, acting);
+        userService.update(id, target, actingUser);
 
         return userMapper.toAdminResponse(userService.getById(id));
     }
 
     @PutMapping("/{id}/block")
-    public AdminUserResponseDTO blockUser(
-            @RequestHeader("X-User-Id") Long actingUserId,
-            @PathVariable Long id
-    ) {
-        User actingUser = userService.getById(actingUserId);
+    public AdminUserResponseDTO blockUser(@PathVariable Long id) {
+        User actingUser = AuthenticationHelper.getLoggedUser();
         userService.blockUser(id, actingUser);
 
         return userMapper.toAdminUserResponse(userService.getById(id));
     }
 
     @PutMapping("/{id}/unblock")
-    public AdminUserResponseDTO unblockUser(
-            @RequestHeader("X-User-Id") Long actingUserId,
-            @PathVariable Long id
-    ) {
-        User actingUser = userService.getById(actingUserId);
+    public AdminUserResponseDTO unblockUser(@PathVariable Long id) {
+        User actingUser = AuthenticationHelper.getLoggedUser();
         userService.unblockUser(id, actingUser);
 
         return userMapper.toAdminUserResponse(userService.getById(id));
     }
 
     @PutMapping("/{id}/promote")
-    public AdminUserResponseDTO promoteUser(
-            @RequestHeader("X-User-Id") Long actingUserId,
-            @PathVariable Long id
-    ) {
-        User actingUser = userService.getById(actingUserId);
+    public AdminUserResponseDTO promoteUser(@PathVariable Long id) {
+        User actingUser = AuthenticationHelper.getLoggedUser();
         userService.promoteToAdmin(id, actingUser);
 
         return userMapper.toAdminUserResponse(userService.getById(id));

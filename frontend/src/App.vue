@@ -42,48 +42,121 @@ onMounted(async () => {
 <template>
   <div class="app-layout">
     <aside class="sidebar">
-      <div class="logo-container"><h1 class="logo">StudyFlow <span class="dot">.</span></h1></div>
+      <div class="logo-container">
+        <h1 class="logo">StudyFlow <span class="dot">.</span></h1>
+      </div>
+
       <nav class="nav-menu">
         <RouterLink to="/" class="nav-item">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="nav-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg> Home
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="nav-icon">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+          </svg>
+          Home
         </RouterLink>
+
         <RouterLink v-if="authStore.user" to="/notifications" class="nav-item">
           <div class="icon-wrapper">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="nav-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" /></svg>
-            <span v-if="notifStore.unreadCount > 0" class="notif-badge">{{ notifStore.unreadCount > 9 ? '9+' : notifStore.unreadCount }}</span>
-          </div> Notifications
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="nav-icon">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+            </svg>
+            <span v-if="notifStore.unreadCount > 0" class="notif-badge">
+              {{ notifStore.unreadCount > 9 ? '9+' : notifStore.unreadCount }}
+            </span>
+          </div>
+          Notifications
         </RouterLink>
+
         <template v-if="!authStore.user">
-          <RouterLink to="/login" class="nav-item"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="nav-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg> Login</RouterLink>
-          <RouterLink to="/register" class="nav-item"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="nav-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM4 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 0110.374 21c-2.331 0-4.512-.645-6.374-1.766z" /></svg> Register</RouterLink>
+          <RouterLink to="/login" class="nav-item">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="nav-icon">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+            </svg>
+            Login
+          </RouterLink>
+          <RouterLink to="/register" class="nav-item">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="nav-icon">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM4 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 0110.374 21c-2.331 0-4.512-.645-6.374-1.766z" />
+            </svg>
+            Register
+          </RouterLink>
         </template>
+
         <template v-else>
-          <RouterLink to="/profile" class="nav-item"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="nav-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg> Profile</RouterLink>
-          <button @click="handleLogout" class="nav-item logout-btn"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="nav-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" /></svg> Logout</button>
+          <RouterLink to="/profile" class="nav-item">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="nav-icon">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+            </svg>
+            Profile
+          </RouterLink>
+          <button @click="handleLogout" class="nav-item logout-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="nav-icon">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+            </svg>
+            Logout
+          </button>
         </template>
       </nav>
-      <router-link v-if="authStore.user" to="/profile" class="user-mini-profile-link">
+
+      <router-link
+          v-if="authStore.user"
+          to="/profile"
+          class="user-mini-profile-link"
+      >
         <div class="user-mini-profile">
-          <div class="avatar"><img v-if="authStore.user.profilePhotoURL" :src="authStore.user.profilePhotoURL" alt="Me" class="avatar-img"/><span v-else>{{ authStore.user.username.charAt(0).toUpperCase() }}</span></div>
-          <div class="user-info"><span class="username">@{{ authStore.user.username }}</span><span class="profile-label">View Profile</span></div>
+          <div class="avatar">
+            <img
+                v-if="authStore.user.profilePhotoURL"
+                :src="authStore.user.profilePhotoURL"
+                alt="Me"
+                class="avatar-img"
+            />
+            <span v-else>{{ authStore.user.username.charAt(0).toUpperCase() }}</span>
+          </div>
+          <div class="user-info">
+            <span class="username">@{{ authStore.user.username }}</span>
+            <span class="profile-label">View Profile</span>
+          </div>
         </div>
       </router-link>
     </aside>
 
-    <main class="content"><RouterView /></main>
+    <main class="content">
+      <router-view v-slot="{ Component }">
+        <transition name="fade-slide" mode="out-in"> <component :is="Component" />
+        </transition>
+      </router-view>
+    </main>
 
     <aside class="trending">
       <div class="trending-card">
-        <h3 class="trending-header"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="trending-icon"><path fill-rule="evenodd" d="M12.963 2.286a.75.75 0 0 0-1.071-.136 9.742 9.742 0 0 0-3.539 6.176 7.547 7.547 0 0 1-1.705-1.715.75.75 0 0 0-1.152.082A9 9 0 1 0 15.68 4.534a7.46 7.46 0 0 1-2.717-2.248ZM15.75 14.25a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" clip-rule="evenodd" /></svg> Top Discussions</h3>
+        <h3 class="trending-header">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="trending-icon">
+            <path fill-rule="evenodd" d="M12.963 2.286a.75.75 0 0 0-1.071-.136 9.742 9.742 0 0 0-3.539 6.176 7.547 7.547 0 0 1-1.705-1.715.75.75 0 0 0-1.152.082A9 9 0 1 0 15.68 4.534a7.46 7.46 0 0 1-2.717-2.248ZM15.75 14.25a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" clip-rule="evenodd" />
+          </svg>
+          Top Discussions
+        </h3>
+
         <ul class="trend-list">
-          <li v-if="topPosts.length === 0" class="empty-trend">No active discussions yet.</li>
+          <li v-if="topPosts.length === 0" class="empty-trend">
+            No active discussions yet.
+          </li>
           <li v-for="post in visibleTrendingPosts" :key="post.id" class="trend-item">
-            <div class="trend-meta"><router-link :to="`/profile/${post.author.id}`" class="trend-author">@{{ post.author.username }}</router-link></div>
+            <div class="trend-meta">
+              <router-link :to="`/profile/${post.author.id}`" class="trend-author">
+                @{{ post.author.username }}
+              </router-link>
+            </div>
             <p class="trend-title" :title="post.title">{{ post.title }}</p>
             <span class="trend-status">Hot Topic</span>
           </li>
         </ul>
-        <button v-if="topPosts.length > 3" @click="isTrendingExpanded = !isTrendingExpanded" class="show-more-btn">{{ isTrendingExpanded ? 'Show Less' : 'Show More' }}</button>
+        <button
+            v-if="topPosts.length > 3"
+            @click="isTrendingExpanded = !isTrendingExpanded"
+            class="show-more-btn"
+        >
+          {{ isTrendingExpanded ? 'Show Less' : 'Show More' }}
+        </button>
       </div>
     </aside>
 
@@ -94,17 +167,10 @@ onMounted(async () => {
           @click="router.push('/notifications')"
       >
         <div class="toast-icon-box" :class="notifStore.popupData.type">
-          <svg v-if="notifStore.popupData.type && notifStore.popupData.type.includes('LIKE')" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.75 3c1.99 0 3.969 1.356 5.25 3.34C14.281 4.356 16.261 3 18.25 3c3.036 0 5.5 2.322 5.5 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
-          </svg>
-          <svg v-else-if="notifStore.popupData.type && notifStore.popupData.type.includes('FOLLOW')" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-            <path fill-rule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clip-rule="evenodd" />
-          </svg>
-          <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-            <path fill-rule="evenodd" d="M4.804 21.644A6.707 6.707 0 006 21.75a6.721 6.721 0 003.583-1.029c.774.182 1.584.279 2.417.279 5.322 0 9.75-3.97 9.75-9 0-5.03-4.428-9-9.75-9s-9.75 3.97-9.75 9c0 2.409 1.025 4.587 2.674 6.192.232.226.277.428.254.543a3.73 3.73 0 01-.814 1.686.75.75 0 00.44 1.223zM8.25 10.875a1.125 1.125 0 100 2.25 1.125 1.125 0 000-2.25zM10.875 12a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0zm4.875-1.125a1.125 1.125 0 100 2.25 1.125 1.125 0 000-2.25z" clip-rule="evenodd" />
-          </svg>
+          <svg v-if="notifStore.popupData.type && notifStore.popupData.type.includes('LIKE')" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.75 3c1.99 0 3.969 1.356 5.25 3.34C14.281 4.356 16.261 3 18.25 3c3.036 0 5.5 2.322 5.5 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" /></svg>
+          <svg v-else-if="notifStore.popupData.type && notifStore.popupData.type.includes('FOLLOW')" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clip-rule="evenodd" /></svg>
+          <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M4.804 21.644A6.707 6.707 0 006 21.75a6.721 6.721 0 003.583-1.029c.774.182 1.584.279 2.417.279 5.322 0 9.75-3.97 9.75-9 0-5.03-4.428-9-9.75-9s-9.75 3.97-9.75 9c0 2.409 1.025 4.587 2.674 6.192.232.226.277.428.254.543a3.73 3.73 0 01-.814 1.686.75.75 0 00.44 1.223zM8.25 10.875a1.125 1.125 0 100 2.25 1.125 1.125 0 000-2.25zM10.875 12a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0zm4.875-1.125a1.125 1.125 0 100 2.25 1.125 1.125 0 000-2.25z" clip-rule="evenodd" /></svg>
         </div>
-
         <div class="toast-content">
           <span class="toast-title">New Activity</span>
           <span class="toast-message">{{ notifStore.popupData.message }}</span>
@@ -118,6 +184,24 @@ onMounted(async () => {
 <style scoped>
 * { box-sizing: border-box; }
 .app-layout { display: grid; grid-template-columns: 280px 1fr 350px; min-height: 100vh; width: 100%; margin: 0; max-width: none; }
+
+/* PAGE TRANSITIONS */
+
+/* 1. Контейнерът трябва да е релативен, за да не се чупят позициониранията */
+.content {
+  position: relative;
+}
+
+/* 2. Анимацията */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: opacity 0.2s ease; /* По-бърза и само opacity */
+}
+
+.fade-slide-enter-from,
+.fade-slide-leave-to {
+  opacity: 0;
+}
 
 .sidebar { background-color: var(--color-dark); color: var(--color-white); padding: 30px 15px; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; box-shadow: 2px 0 10px rgba(0,0,0,0.1); overflow-y: auto; }
 .sidebar::-webkit-scrollbar { display: none; }
@@ -142,42 +226,18 @@ onMounted(async () => {
 .username { font-size: 14px; font-weight: 700; color: var(--color-white); }
 .profile-label { font-size: 12px; color: #aeb5bc; }
 
-
-.toast-notification {
-  position: fixed; bottom: 30px; right: 30px;
-  background-color: white;
-  color: var(--color-dark);
-  padding: 15px 20px;
-  border-radius: 16px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-  border: 1px solid #f1f1f1;
-  z-index: 2000;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  max-width: 350px;
-}
-
-.toast-icon-box {
-  width: 35px; height: 35px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
+/* TOAST */
+.toast-notification { position: fixed; bottom: 30px; right: 30px; background-color: white; color: var(--color-dark); padding: 15px 20px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border: 1px solid #f1f1f1; z-index: 2000; cursor: pointer; display: flex; align-items: center; gap: 15px; max-width: 350px; }
+.toast-icon-box { width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .toast-icon-box svg { width: 20px; height: 20px; }
-
-
 .toast-icon-box[class*="LIKE"] { background-color: #fee2e2; color: #ef4444; }
 .toast-icon-box[class*="FOLLOW"] { background-color: #e0f2fe; color: #0284c7; }
-.toast-icon-box { background-color: #f1f5f9; color: #64748b; } /* Default */
-
+.toast-icon-box { background-color: #f1f5f9; color: #64748b; }
 .toast-content { display: flex; flex-direction: column; }
 .toast-title { font-size: 12px; font-weight: 700; color: #94a3b8; text-transform: uppercase; }
 .toast-message { font-size: 14px; font-weight: 600; color: var(--color-dark); }
-
 .toast-enter-active, .toast-leave-active { transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 .toast-enter-from, .toast-leave-to { transform: translateX(50px); opacity: 0; }
-
 
 .content { padding: 0; border-right: 1px solid rgba(0,0,0,0.05); border-left: 1px solid rgba(0,0,0,0.05); width: 100%; }
 .trending { padding: 30px 40px 30px 20px; }
