@@ -80,7 +80,7 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
     const authStore = useAuthStore();
 
-    // Взето от router 2 – да сме сигурни, че auth е инициализиран
+    // Уверяваме се, че auth е инициализиран преди да проверяваме права
     if (authStore.loading) {
         await authStore.initAuth();
     }
@@ -92,7 +92,7 @@ router.beforeEach(async (to, from, next) => {
     const isRequiresAuth = to.meta['requiresAuth'];
     const isAdminOnly = to.meta['adminOnly'];
 
-    // 1) Гост-only (login/register) – ако сме логнати, връщаме към Home
+    // 1) Гост-only (login/register) – ако сме логнати, към Home
     if (isGuestOnly && isAuthenticated) {
         return next({ name: 'Home' });
     }
