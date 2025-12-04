@@ -8,7 +8,7 @@ import Register from './pages/Register.vue';
 import Profile from './pages/Profile.vue';
 import FollowList from './pages/FollowList.vue';
 import Notifications from './pages/Notifications.vue';
-import AdminUsers from './pages/AdminUsers.vue'; // Import Admin Page
+import AdminUsers from './pages/AdminUsers.vue'; // Admin Page
 
 const routes = [
     {
@@ -29,10 +29,16 @@ const routes = [
         meta: { guestOnly: true }
     },
     {
+        path: '/notifications',
+        name: 'Notifications',
+        component: Notifications,
+        meta: { requiresAuth: true }
+    },
+    {
         path: '/profile',
         name: 'MyProfile',
         component: Profile,
-        meta: { requiresAuth: true, transition: 'fade-slide'}
+        meta: { requiresAuth: true, transition: 'fade-slide' }
     },
     {
         path: '/profile/:id',
@@ -53,16 +59,10 @@ const routes = [
         meta: { transition: 'fade-slide' }
     },
     {
-        path: '/notifications',
-        name: 'Notifications',
-        component: Notifications,
-        meta: { requiresAuth: true }
-    },
-    {
         path: '/admin/users',
         name: 'AdminUsers',
         component: AdminUsers,
-        meta: { requiresAuth: true, adminOnly: true } // Added adminOnly meta
+        meta: { requiresAuth: true, adminOnly: true } // само за админ
     }
 ];
 
@@ -79,31 +79,36 @@ const router = createRouter({
  */
 router.beforeEach(async (to, from, next) => {
     const authStore = useAuthStore();
-    
+
+    // Взето от router 2 – да сме сигурни, че auth е инициализиран
+    if (authStore.loading) {
+        await authStore.initAuth();
+    }
+
     const isAuthenticated = authStore.isAuthenticated;
     const isAdmin = authStore.isAdmin;
-    
-    // Use bracket notation to avoid "Unresolved variable" warnings
+
     const isGuestOnly = to.meta['guestOnly'];
     const isRequiresAuth = to.meta['requiresAuth'];
     const isAdminOnly = to.meta['adminOnly'];
 
-    // 1. Check for guest-only routes (Redirect logged-in users to Home)
+    // 1) Гост-only (login/register) – ако сме логнати, връщаме към Home
     if (isGuestOnly && isAuthenticated) {
         return next({ name: 'Home' });
     }
 
-    // 2. Check for protected routes (Redirect guests to Login)
+    // 2) Requires auth – ако не сме логнати, към Login
     if (isRequiresAuth && !isAuthenticated) {
         return next({ name: 'Login' });
     }
 
-    // 3. Check for admin-only routes (Redirect non-admins to Home)
+    // 3) Admin only – ако не сме admin, към Home
     if (isAdminOnly && !isAdmin) {
         return next({ name: 'Home' });
     }
 
-    next(); // Allow navigation
+    // 4) Всичко е ок
+    next();
 });
 
 export default router;

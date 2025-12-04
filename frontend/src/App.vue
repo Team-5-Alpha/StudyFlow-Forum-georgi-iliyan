@@ -12,7 +12,7 @@ const router = useRouter();
 const topPosts = ref([]);
 const isTrendingExpanded = ref(false);
 
-// Admin check – от store или от localStorage (по-надеждно при refresh)
+// Проверка дали е админ – първо през store, после fallback към localStorage (полезно при refresh)
 const isAdmin = computed(() => {
   if (authStore.user?.role === 'ADMIN') return true;
   try {
@@ -223,7 +223,9 @@ onMounted(async () => {
                 alt="Me"
                 class="avatar-img"
             />
-            <span v-else>{{ authStore.user.username.charAt(0).toUpperCase() }}</span>
+            <span v-else>
+              {{ authStore.user.username.charAt(0).toUpperCase() }}
+            </span>
           </div>
           <div class="user-info">
             <span class="username">@{{ authStore.user.username }}</span>
@@ -304,7 +306,10 @@ onMounted(async () => {
       >
         <div class="toast-icon-box" :class="notifStore.popupData.type">
           <svg
-              v-if="notifStore.popupData.type && notifStore.popupData.type.includes('LIKE')"
+              v-if="
+              notifStore.popupData.type &&
+              notifStore.popupData.type.includes('LIKE')
+            "
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
               fill="currentColor"
@@ -314,7 +319,10 @@ onMounted(async () => {
             />
           </svg>
           <svg
-              v-else-if="notifStore.popupData.type && notifStore.popupData.type.includes('FOLLOW')"
+              v-else-if="
+              notifStore.popupData.type &&
+              notifStore.popupData.type.includes('FOLLOW')
+            "
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
               fill="currentColor"
@@ -627,7 +635,7 @@ onMounted(async () => {
 
 /* MAIN CONTENT */
 .content {
-  position: relative; /* важно за transition-а */
+  position: relative;
   padding: 0;
   border-right: 1px solid rgba(0, 0, 0, 0.05);
   border-left: 1px solid rgba(0, 0, 0, 0.05);
