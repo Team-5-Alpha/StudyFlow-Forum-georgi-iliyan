@@ -19,7 +19,16 @@ const loading = ref(true);
 const error = ref(null);
 const isFollowLoading = ref(false);
 const isEditing = ref(false);
-const editForm = ref({ firstName: '', lastName: '', email: '', password: '', profilePhotoURL: '' });
+
+// Edit Form: Добавяме phoneNumber в state-а
+const editForm = ref({
+  firstName: '',
+  lastName: '',
+  email: '',
+  password: '',
+  profilePhotoURL: '',
+  phoneNumber: '' // <--- НОВО
+});
 
 // Password Modal State
 const isPasswordModalOpen = ref(false);
@@ -50,12 +59,15 @@ const fetchProfileData = async () => {
     posts.value = postsRes.data;
     followersList.value = followersRes.data;
     followingList.value = followingRes.data;
+
+    // Попълваме формата (включително телефон, ако има такъв)
     editForm.value = {
       firstName: profile.value.firstName,
       lastName: profile.value.lastName,
       email: profile.value.email,
       password: '',
-      profilePhotoURL: profile.value.profilePhotoURL || ''
+      profilePhotoURL: profile.value.profilePhotoURL || '',
+      phoneNumber: profile.value.phoneNumber || '' // <--- НОВО
     };
   } catch (err) { error.value = "Failed to load profile."; } finally { loading.value = false; }
 };
@@ -99,13 +111,19 @@ const saveProfile = async () => {
       firstName: editForm.value.firstName,
       lastName: editForm.value.lastName,
       email: editForm.value.email,
-      profilePhotoURL: editForm.value.profilePhotoURL || null
+      profilePhotoURL: editForm.value.profilePhotoURL || null,
+      // Ако е админ, пращаме и телефон
+      ...(authStore.user?.role === 'ADMIN' ? { phoneNumber: editForm.value.phoneNumber } : {})
     };
 
     if (passwordChanged) {
       updatePayload.password = editForm.value.password;
     }
 
+    // Тук трябва да се уверим, че ползваме правилния endpoint.
+    // Ако си Админ и редактираш себе си, може да се наложи да ползваш Admin Update endpoint,
+    // или backend-ът да приема phoneNumber и в UserUpdateDTO, ако user-ът е админ.
+    // Засега ползваме стандартния usersService.update().
     const updatedUser = await usersService.update(profile.value.id, updatePayload);
 
     if (emailChanged) {
@@ -166,6 +184,12 @@ onMounted(() => { fetchProfileData(); });
         <div class="profile-details">
           <h2 class="profile-name">{{ profile.firstName }} {{ profile.lastName }}</h2>
           <div class="profile-handle">@{{ profile.username }}</div>
+
+          <!-- SHOW PHONE NUMBER (ONLY IF ADMIN) -->
+          <div v-if="profile.role === 'ADMIN' && profile.phoneNumber" class="profile-phone">
+            📞 {{ profile.phoneNumber }}
+          </div>
+
           <div class="profile-dates">📅 Joined {{ formatDate(profile.createdAt) }}</div>
           <div class="profile-stats">
             <span><strong>{{ posts.length }}</strong> Posts</span>
@@ -182,7 +206,15 @@ onMounted(() => { fetchProfileData(); });
             <div class="form-group"><label>First Name</label><input v-model="editForm.firstName" type="text" required minlength="4" maxlength="32" /></div>
             <div class="form-group"><label>Last Name</label><input v-model="editForm.lastName" type="text" required minlength="4" maxlength="32" /></div>
           </div>
+
           <div class="form-group"><label>Email Address</label><input v-model="editForm.email" type="email" required minlength="6" maxlength="128" /></div>
+
+          <!-- PHONE NUMBER FIELD (VISIBLE ONLY FOR ADMINS) -->
+          <div class="form-group" v-if="authStore.user?.role === 'ADMIN'">
+            <label>Phone Number</label>
+            <input v-model="editForm.phoneNumber" type="text" placeholder="+359..." />
+          </div>
+
           <div class="form-group"><label>New Password</label><input v-model="editForm.password" type="password" placeholder="Min 6 characters" minlength="6" maxlength="128" autocomplete="new-password" /><small style="color: #888;">Only fill this if you want to change your password.</small></div>
           <div class="form-group"><label>Profile Photo URL</label><input v-model="editForm.profilePhotoURL" type="url" placeholder="https://..." maxlength="255" /></div>
           <button type="submit" class="btn-primary" style="margin-top: 10px;">Save Changes</button>
@@ -236,6 +268,7 @@ onMounted(() => { fetchProfileData(); });
 .profile-handle { color: var(--color-text-muted); margin-bottom: 10px; font-weight: 500; }
 .profile-dates { font-size: 14px; color: #64748b; margin-bottom: 15px; }
 .profile-stats { display: flex; gap: 20px; font-size: 14px; }
+.profile-phone { font-size: 14px; color: var(--color-accent); margin-bottom: 5px; font-weight: 600; }
 .stat-link { color: inherit; text-decoration: none; cursor: pointer; transition: color 0.2s; }
 .stat-link:hover { color: var(--color-accent); text-decoration: none; }
 .edit-form-card { background: var(--color-white); margin: 20px; padding: 25px; border-radius: 16px; box-shadow: var(--shadow-card); }

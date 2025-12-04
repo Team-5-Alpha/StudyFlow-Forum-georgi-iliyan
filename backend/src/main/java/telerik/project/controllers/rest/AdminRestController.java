@@ -3,7 +3,7 @@ package telerik.project.controllers.rest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
-import telerik.project.helpers.AuthenticationHelper; // <--- НОВО
+import telerik.project.helpers.AuthenticationHelper;
 import telerik.project.helpers.AuthorizationHelper;
 import telerik.project.helpers.mappers.UserMapper;
 import telerik.project.models.User;
@@ -54,8 +54,9 @@ public class AdminRestController {
             @Valid @RequestBody AdminUpdateDTO dto
     ) {
         User actingUser = AuthenticationHelper.getLoggedUser();
-        User target = userService.getById(id);
+        AuthorizationHelper.validateAdmin(actingUser);
 
+        User target = userService.getById(id);
         userMapper.updateAdmin(target, dto);
         userService.update(id, target, actingUser);
 
@@ -65,22 +66,26 @@ public class AdminRestController {
     @PutMapping("/{id}/block")
     public AdminUserResponseDTO blockUser(@PathVariable Long id) {
         User actingUser = AuthenticationHelper.getLoggedUser();
-        userService.blockUser(id, actingUser);
+        AuthorizationHelper.validateAdmin(actingUser);
 
+        userService.blockUser(id, actingUser);
         return userMapper.toAdminUserResponse(userService.getById(id));
     }
 
     @PutMapping("/{id}/unblock")
     public AdminUserResponseDTO unblockUser(@PathVariable Long id) {
         User actingUser = AuthenticationHelper.getLoggedUser();
-        userService.unblockUser(id, actingUser);
+        AuthorizationHelper.validateAdmin(actingUser);
 
+        userService.unblockUser(id, actingUser);
         return userMapper.toAdminUserResponse(userService.getById(id));
     }
 
     @PutMapping("/{id}/promote")
     public AdminUserResponseDTO promoteUser(@PathVariable Long id) {
         User actingUser = AuthenticationHelper.getLoggedUser();
+        AuthorizationHelper.validateAdmin(actingUser);
+
         userService.promoteToAdmin(id, actingUser);
 
         return userMapper.toAdminUserResponse(userService.getById(id));

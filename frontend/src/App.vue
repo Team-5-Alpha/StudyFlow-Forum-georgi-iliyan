@@ -88,6 +88,17 @@ onMounted(async () => {
             </svg>
             Profile
           </RouterLink>
+
+          <RouterLink v-if="authStore.user?.role === 'ADMIN'" to="/admin" class="nav-item">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                 stroke-width="1.8" stroke="currentColor" class="nav-icon">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M12 3l8.485 3.03c.36.128.515.56.343.91A12.04 12.04 0 0112 21a12.04 12.04 0 01-8.828-14.06.75.75 0 01.343-.91L12 3z" />
+            </svg>
+            Admin
+          </RouterLink>
+
+
           <button @click="handleLogout" class="nav-item logout-btn">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="nav-icon">
               <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />

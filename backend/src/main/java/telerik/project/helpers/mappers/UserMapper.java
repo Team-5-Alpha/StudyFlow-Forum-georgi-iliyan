@@ -88,6 +88,7 @@ public class UserMapper {
         dto.setLastName(user.getLastName());
         dto.setEmail(user.getEmail());
         dto.setProfilePhotoURL(user.getProfilePhotoURL());
+        dto.setRole(user.getRole().toString());
         dto.setCreatedAt(user.getCreatedAt());
         dto.setUpdatedAt(user.getUpdatedAt());
     }

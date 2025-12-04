@@ -18,7 +18,7 @@ public class UserResponseDTO {
 
     private String email;
     private String profilePhotoURL;
-
+    private String role;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

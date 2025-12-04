@@ -19,7 +19,7 @@ export const useAuthStore = defineStore('auth', {
     getters: {
         isAuthenticated: (state) => !!state.user,
         currentUserId: (state) => state.user?.id,
-        isAdmin: (state) => false,
+        isAdmin: (state) => state.user?.role === 'admin',
     },
 
     actions: {
