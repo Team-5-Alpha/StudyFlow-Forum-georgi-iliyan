@@ -4,21 +4,47 @@ import { RouterLink, useRouter } from 'vue-router';
 import adminService from '../services/admin.service';
 import usersService from '../services/users.service';
 import { useAuthStore } from '../stores/auth.store';
+import ConfirmModal from '../components/ConfirmModal.vue';
+import { useAdminAlert } from '../composables/useAdminAlert';
 
 const authStore = useAuthStore();
 const router = useRouter();
 
+
+const showConfirm = ref(false);
+const confirmConfig = reactive({
+  title: '',
+  message: '',
+  confirmText: 'Confirm',
+  action: null,
+  payload: null,
+});
+
+const { addAlert } = useAdminAlert();
+
+const openConfirm = (title, message, action, payload = null, confirmText = 'Confirm') => {
+  confirmConfig.title = title;
+  confirmConfig.message = message;
+  confirmConfig.confirmText = confirmText;
+  confirmConfig.action = action;
+  confirmConfig.payload = payload;
+  showConfirm.value = true;
+};
+
+const handleConfirm = async () => {
+  showConfirm.value = false;
+  try {
+    if (confirmConfig.action) await confirmConfig.action(confirmConfig.payload);
+  } catch (error) {
+    addAlert('Action failed', 'error');
+  }
+};
 // State
 const users = ref([]);
 const loading = ref(false);
 const page = ref(0);
 const pageSize = ref(10);
 const hasMore = ref(true);
-
-// Edit Modal
-const showEditModal = ref(false);
-const editingUser = ref(null);
-const editForm = reactive({ firstName: '', lastName: '', email: '', phoneNumber: '', profilePhotoURL: '' });
 
 // Filters
 const filters = reactive({ username: '', email: '', isBlocked: '' });
@@ -28,6 +54,7 @@ const usernameSuggestions = ref([]);
 const showUsernameSuggestions = ref(false);
 let _debounceTimer = null;
 
+// Debounce
 const debounce = (fn, delay = 300) => {
   return (...args) => {
     clearTimeout(_debounceTimer);
@@ -43,7 +70,7 @@ const fetchUsernameSuggestions = async (query) => {
   }
   try {
     const res = await usersService.search({ username: query, size: 6 });
-    usernameSuggestions.value = Array.isArray(res.data) ? res.data.slice(0,6) : [];
+    usernameSuggestions.value = Array.isArray(res.data) ? res.data.slice(0, 6) : [];
     showUsernameSuggestions.value = usernameSuggestions.value.length > 0;
   } catch (e) {
     usernameSuggestions.value = [];
@@ -52,7 +79,9 @@ const fetchUsernameSuggestions = async (query) => {
 
 const debouncedFetchSuggestions = debounce(fetchUsernameSuggestions, 300);
 
-watch(() => filters.username, (val) => { debouncedFetchSuggestions(val); });
+watch(() => filters.username, (val) => {
+  debouncedFetchSuggestions(val);
+});
 
 const selectUsernameSuggestion = (u) => {
   filters.username = u.username;
@@ -80,66 +109,57 @@ const fetchUsers = async () => {
   }
 };
 
+// Search / Clear
 const onSearch = () => { page.value = 0; fetchUsers(); };
 
 const clearFilters = () => {
-  filters.username = ''; filters.email = ''; filters.isBlocked = '';
-  usernameSuggestions.value = []; showUsernameSuggestions.value = false;
+  filters.username = '';
+  filters.email = '';
+  filters.isBlocked = '';
+  usernameSuggestions.value = [];
+  showUsernameSuggestions.value = false;
   onSearch();
 };
 
+// Pagination
 const nextPage = () => { if (hasMore.value) { page.value++; fetchUsers(); } };
 const prevPage = () => { if (page.value > 0) { page.value--; fetchUsers(); } };
 
-// Edit
-const openEditModal = (user) => {
-  editingUser.value = { ...user };
-  editForm.firstName = user.firstName; editForm.lastName = user.lastName;
-  editForm.email = user.email; editForm.phoneNumber = user.phoneNumber || '';
-  editForm.profilePhotoURL = user.profilePhotoURL || '';
-  showEditModal.value = true;
-};
-const closeEditModal = () => { showEditModal.value = false; editingUser.value = null; };
-
-const saveEdit = async () => {
-  if (!editingUser.value) return;
-
-  const updateDTO = { ...editForm };
-
-  if (editingUser.value.role !== 'ADMIN') {
-    delete updateDTO.phoneNumber;
-  }
-
-  try {
-    await adminService.update(editingUser.value.id, updateDTO);
-    closeEditModal();
-    await fetchUsers();
-    alert("User updated successfully");
-  } catch (error) {
-    alert("Failed to update user");
-  }
+// Block / Unblock
+const toggleBlock = (user) => {
+  const actionName = user.blocked ? 'Unblock' : 'Block';
+  openConfirm(
+      `${actionName} user ${user.username}?`,
+      'This action cannot be undone.',
+      async () => {
+        if (user.blocked) await adminService.unblockUser(user.id);
+        else await adminService.blockUser(user.id);
+        await fetchUsers();
+        addAlert(`${actionName}ed ${user.username} successfully`);
+      },
+      user
+  );
 };
 
-
-// Block / Promote
-const toggleBlock = async (user) => {
-  const action = user.blocked ? 'Unblock' : 'Block';
-  if (!confirm(`${action} user ${user.username}?`)) return;
-  try {
-    if (user.blocked) await adminService.unblockUser(user.id);
-    else await adminService.blockUser(user.id);
-    await fetchUsers();
-  } catch (error) { alert("Action failed"); }
+const promoteUser = (user) => {
+  openConfirm(
+      `Promote user ${user.username} to Admin?`,
+      'This action cannot be undone.',
+      async () => {
+        await adminService.promoteUser(user.id);
+        await fetchUsers();
+        addAlert(`User ${user.username} promoted to Admin`);
+      },
+      user
+  );
 };
 
-const promoteUser = async (user) => {
-  if (!confirm(`Promote user ${user.username} to Admin?`)) return;
-  try { await adminService.promoteUser(user.id); await fetchUsers(); }
-  catch (error) { alert("Action failed"); }
-};
 
 onMounted(async () => {
-  if (authStore.user?.role !== 'ADMIN') { router.push('/'); return; }
+  if (authStore.user?.role !== 'ADMIN') {
+    router.push('/');
+    return;
+  }
   await fetchUsers();
 });
 </script>
@@ -176,7 +196,8 @@ onMounted(async () => {
               @keyup.enter="onSearch"
               @focus="showUsernameSuggestions = usernameSuggestions.length > 0"
           />
-          <!-- Suggestions Dropdown -->
+
+          <!-- Suggestions -->
           <ul v-if="showUsernameSuggestions" class="suggestions">
             <li
                 v-for="s in usernameSuggestions"
@@ -186,7 +207,6 @@ onMounted(async () => {
             >
               <div class="s-meta">
                 <div class="s-avatar">{{ s.username.charAt(0).toUpperCase() }}</div>
-
                 <div class="s-info">
                   <span class="s-username">{{ s.username }}</span>
                   <span class="s-email">{{ s.email }}</span>
@@ -205,7 +225,7 @@ onMounted(async () => {
           <input v-model="filters.email" placeholder="Search email..." class="search-input" @keyup.enter="onSearch"/>
         </div>
 
-        <!-- Status Select (Custom Style) -->
+        <!-- Status Select -->
         <div class="select-wrapper">
           <select v-model="filters.isBlocked" class="custom-select" @change="onSearch">
             <option value="">All Statuses</option>
@@ -219,6 +239,7 @@ onMounted(async () => {
           <button @click="onSearch" class="btn-search">Search</button>
           <button @click="clearFilters" class="btn-clear">Clear</button>
         </div>
+
       </div>
     </div>
 
@@ -237,6 +258,7 @@ onMounted(async () => {
         </tr>
         </thead>
         <tbody>
+
         <tr v-for="user in users" :key="user.id">
           <td>
             <div class="user-cell">
@@ -250,48 +272,63 @@ onMounted(async () => {
               </div>
             </div>
           </td>
+
           <td class="email-cell">{{ user.email }}</td>
+
           <td>
                <span class="badge" :class="user.role === 'ADMIN' ? 'badge-admin' : 'badge-user'">
                  {{ user.role }}
                </span>
           </td>
+
           <td>
                <span class="badge" :class="user.blocked ? 'badge-blocked' : 'badge-active'">
                  {{ user.blocked ? 'Blocked' : 'Active' }}
                </span>
           </td>
+
           <td>
-            <!-- ACTIONS GRID: Гарантира подравняване, дори ако бутон липсва -->
             <div class="actions-grid">
+
               <!-- VIEW -->
               <RouterLink :to="`/profile/${user.id}`" class="action-icon-btn view" title="View Profile">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
               </RouterLink>
 
-              <!-- EDIT -->
-              <button @click="openEditModal(user)" class="action-icon-btn edit" title="Edit User">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
-              </button>
-
               <!-- BLOCK / UNBLOCK -->
-              <button @click="toggleBlock(user)" class="action-icon-btn" :class="user.blocked ? 'unblock' : 'block'" :title="user.blocked ? 'Unblock' : 'Block'">
+              <button
+                  @click="toggleBlock(user)"
+                  class="action-icon-btn"
+                  :class="user.blocked ? 'unblock' : 'block'"
+                  :title="user.blocked ? 'Unblock' : 'Block'"
+              >
                 <svg v-if="!user.blocked" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+
                 <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
               </button>
 
-              <!-- PROMOTE (Placeholder keeps alignment) -->
+              <!-- PROMOTE -->
               <div class="promote-slot">
-                <button v-if="user.role !== 'ADMIN'" @click="promoteUser(user)" class="action-icon-btn promote" title="Promote to Admin">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l7.5-7.5 7.5 7.5m-15 6l7.5-7.5 7.5 7.5" /></svg>
+                <button
+                    v-if="user.role !== 'ADMIN'"
+                    @click="promoteUser(user)"
+                    class="action-icon-btn promote"
+                    title="Promote to Admin"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l7.5-7.5 7.5 7.5m-15 6l7.5-7.5 7.5 7.5" />
+                  </svg>
                 </button>
               </div>
+
             </div>
           </td>
         </tr>
+
         <tr v-if="users.length === 0">
           <td colspan="5" class="empty-cell">No users found matching criteria.</td>
         </tr>
+
         </tbody>
       </table>
     </div>
@@ -303,37 +340,26 @@ onMounted(async () => {
       <button @click="nextPage" :disabled="!hasMore" class="page-btn">Next</button>
     </div>
 
-    <!-- EDIT MODAL (Minimalist) -->
-    <div v-if="showEditModal" class="modal-overlay" @click.self="closeEditModal">
-      <div class="modal">
-        <div class="modal-header">
-          <h3>Edit User</h3>
-          <button @click="closeEditModal" class="close-modal-btn">✕</button>
-        </div>
-        <div class="modal-body">
-          <div class="form-group"><label>First Name</label><input v-model="editForm.firstName" type="text" class="modal-input"/></div>
-          <div class="form-group"><label>Last Name</label><input v-model="editForm.lastName" type="text" class="modal-input"/></div>
-          <div class="form-group"><label>Email</label><input v-model="editForm.email" type="email" class="modal-input"/></div>
-          <div v-if="editingUser?.role === 'ADMIN'" class="form-group">
-            <label>Phone</label>
-            <input v-model="editForm.phoneNumber" type="text" class="modal-input"/>
-          </div>
+    <ConfirmModal
+        :isOpen="showConfirm"
+        :title="confirmConfig.title"
+        :message="confirmConfig.message"
+        :confirmText="confirmConfig.confirmText"
+        :showIcon="false"
+        @confirm="handleConfirm"
+        @cancel="showConfirm = false"
+    />
 
-          <div class="form-group"><label>Photo URL</label><input v-model="editForm.profilePhotoURL" type="text" class="modal-input"/></div>
-        </div>
-        <div class="modal-footer">
-          <button @click="saveEdit" class="btn-save">Save Changes</button>
-        </div>
-      </div>
-    </div>
+    <AdminAlerts />
+
 
   </div>
 </template>
 
 <style scoped>
+/* Container */
 .admin-container { max-width: 1200px; margin: 0 auto; padding: 30px 20px; }
 
-/* Header */
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
 .header-content h1 { margin: 0; font-size: 28px; color: var(--color-dark); }
 .subtitle { margin: 5px 0 0 0; color: #64748b; font-size: 14px; }
@@ -376,56 +402,14 @@ onMounted(async () => {
   padding: 6px 0;
 }
 
-.suggestion-item {
-  padding: 10px 14px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
+.suggestion-item { padding: 10px 14px; cursor: pointer; transition: background 0.2s; }
+.suggestion-item:hover { background: #f8fafc; }
 
-.suggestion-item:hover {
-  background: #f8fafc;
-}
-
-/* FLEX ПОДРАВНЯВАНЕ */
-.s-meta {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-/* Аватар */
-.s-avatar {
-  width: 34px;
-  height: 34px;
-  background: var(--color-accent);
-  color: white;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  font-size: 14px;
-}
-
-/* Текстов блок */
-.s-info {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  line-height: 1.2;
-}
-
-.s-username {
-  font-weight: 700;
-  color: var(--color-dark);
-  font-size: 14px;
-}
-
-.s-email {
-  font-size: 12px;
-  color: #94a3b8;
-}
-
+.s-meta { display: flex; align-items: center; gap: 12px; }
+.s-avatar { width: 34px; height: 34px; background: var(--color-accent); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; }
+.s-info { display: flex; flex-direction: column; justify-content: center; line-height: 1.2; }
+.s-username { font-weight: 700; color: var(--color-dark); font-size: 14px; }
+.s-email { font-size: 12px; color: #94a3b8; }
 
 /* Table */
 .table-container { background: white; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid #f1f1f1; }
@@ -448,19 +432,37 @@ onMounted(async () => {
 .badge-active { background: #dcfce7; color: #16a34a; }
 .badge-blocked { background: #fee2e2; color: #ef4444; }
 
-/* Actions Grid - FIXED ALIGNMENT */
-.actions-grid { display: grid; grid-template-columns: repeat(4, 32px); gap: 8px; align-items: center; }
-.promote-slot { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; } /* Заема място дори да е празно */
+/* Actions Grid */
+.actions-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 32px);
+  gap: 8px;
+  align-items: center;
+}
+.promote-slot { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
 
-.action-icon-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: #64748b; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; }
+.action-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
 .action-icon-btn svg { width: 18px; height: 18px; }
 .action-icon-btn:hover { background: #f1f5f9; color: var(--color-dark); }
+
 .action-icon-btn.view:hover { color: var(--color-accent); background: #fff9ed; }
-.action-icon-btn.edit:hover { color: #0284c7; background: #e0f2fe; }
 .action-icon-btn.block:hover { color: #ef4444; background: #fee2e2; }
 .action-icon-btn.unblock { color: #d97706; background: #fef3c7; }
 .action-icon-btn.promote { color: #16a34a; }
 .action-icon-btn.promote:hover { background: #dcfce7; }
+
 
 /* Pagination */
 .pagination { display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 25px; }
@@ -469,20 +471,7 @@ onMounted(async () => {
 .page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .page-count { font-size: 14px; color: #94a3b8; font-weight: 600; }
 
-/* Modal */
-.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
-.modal { background: white; padding: 30px; border-radius: 20px; width: 400px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); animation: slideUp 0.3s ease; }
-@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-.modal-header h3 { margin: 0; color: var(--color-dark); }
-.close-modal-btn { background: none; border: none; font-size: 20px; color: #94a3b8; cursor: pointer; }
-.form-group { margin-bottom: 15px; }
-.form-group label { display: block; font-size: 12px; font-weight: 700; color: #94a3b8; margin-bottom: 5px; text-transform: uppercase; }
-.modal-input { width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
-.modal-input:focus { outline: none; border-color: var(--color-accent); }
-.btn-save { width: 100%; background: var(--color-dark); color: white; padding: 12px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; margin-top: 10px; }
-.btn-save:hover { background: var(--color-accent); }
-
+/* Misc */
 .loading-state { text-align: center; padding: 50px; color: #94a3b8; }
 .empty-cell { text-align: center; padding: 30px; color: #94a3b8; font-style: italic; }
 </style>

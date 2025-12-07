@@ -2,12 +2,12 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useNotificationStore } from '../stores/notifications.store';
-import ConfirmModal from '../components/ConfirmModal.vue'; // <--- НОВ ИМПОРТ
+import ConfirmModal from '../components/ConfirmModal.vue';
 
 const notifStore = useNotificationStore();
 const router = useRouter();
 
-// State за модала
+// State for Clear All modal
 const isClearModalOpen = ref(false);
 
 onMounted(() => {
@@ -47,7 +47,7 @@ const handleDelete = (id) => {
   notifStore.remove(id);
 };
 
-// --- LOGIC ЗА МОДАЛА ---
+// --- LOGIC FOR MODAL ---
 const openClearModal = () => {
   isClearModalOpen.value = true;
 };

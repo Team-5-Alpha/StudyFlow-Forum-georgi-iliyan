@@ -197,16 +197,13 @@ onMounted(async () => {
 .app-layout { display: grid; grid-template-columns: 280px 1fr 350px; min-height: 100vh; width: 100%; margin: 0; max-width: none; }
 
 /* PAGE TRANSITIONS */
-
-/* 1. Контейнерът трябва да е релативен, за да не се чупят позициониранията */
 .content {
   position: relative;
 }
 
-/* 2. Анимацията */
 .fade-slide-enter-active,
 .fade-slide-leave-active {
-  transition: opacity 0.2s ease; /* По-бърза и само opacity */
+  transition: opacity 0.2s ease;
 }
 
 .fade-slide-enter-from,

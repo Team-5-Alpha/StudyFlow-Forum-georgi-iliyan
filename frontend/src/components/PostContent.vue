@@ -34,7 +34,7 @@ defineProps({
   color: #334155;
   line-height: 1.6;
   margin-bottom: 0;
-  white-space: pre-wrap; /* Запазва новите редове */
+  white-space: pre-wrap;
   font-size: 15px;
 }
 </style>

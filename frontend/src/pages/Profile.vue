@@ -20,14 +20,14 @@ const error = ref(null);
 const isFollowLoading = ref(false);
 const isEditing = ref(false);
 
-// Edit Form: Добавяме phoneNumber в state-а
+// Edit Form:
 const editForm = ref({
   firstName: '',
   lastName: '',
   email: '',
   password: '',
   profilePhotoURL: '',
-  phoneNumber: '' // <--- НОВО
+  phoneNumber: ''
 });
 
 // Password Modal State
@@ -60,7 +60,7 @@ const fetchProfileData = async () => {
     followersList.value = followersRes.data;
     followingList.value = followingRes.data;
 
-    // Попълваме формата (включително телефон, ако има такъв)
+    // Edit Form
     editForm.value = {
       firstName: profile.value.firstName,
       lastName: profile.value.lastName,
@@ -112,7 +112,6 @@ const saveProfile = async () => {
       lastName: editForm.value.lastName,
       email: editForm.value.email,
       profilePhotoURL: editForm.value.profilePhotoURL || null,
-      // Ако е админ, пращаме и телефон
       ...(authStore.user?.role === 'ADMIN' ? { phoneNumber: editForm.value.phoneNumber } : {})
     };
 
@@ -120,10 +119,7 @@ const saveProfile = async () => {
       updatePayload.password = editForm.value.password;
     }
 
-    // Тук трябва да се уверим, че ползваме правилния endpoint.
-    // Ако си Админ и редактираш себе си, може да се наложи да ползваш Admin Update endpoint,
-    // или backend-ът да приема phoneNumber и в UserUpdateDTO, ако user-ът е админ.
-    // Засега ползваме стандартния usersService.update().
+
     const updatedUser = await usersService.update(profile.value.id, updatePayload);
 
     if (emailChanged) {
@@ -157,7 +153,7 @@ const saveProfile = async () => {
   }
 };
 
-// --- НОВО: Изтриване на пост ---
+// --- DELETE POST ---
 const removePost = (postId) => {
   posts.value = posts.value.filter(p => p.id !== postId);
 };

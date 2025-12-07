@@ -17,18 +17,23 @@ const posts = ref([]);
 const loading = ref(true);
 const error = ref(null);
 
+// Pagination
+const page = ref(0);
+const pageSize = ref(10);
+const hasMore = ref(true);
+
 // Tags Data
 const tags = ref([]);
 const selectedTag = ref(null);
 const tagDropdownOpen = ref(false);
 
-// Search Logic (USER-ONLY dropdown)
+// Search Logic
 const searchQuery = ref('');
 const isSearchFocused = ref(false);
 
 // Users (for user search results)
 const users = ref([]);
-const allUsersCache = ref([]); // fallback cache
+const allUsersCache = ref([]);
 let searchDebounce = null;
 
 // suggestedUsers: show up to 8 matching users for the dropdown
@@ -113,6 +118,7 @@ watch(searchQuery, (newVal) => {
 // Watch selectedTag to auto-refresh when changed from dropdown/pills
 watch(selectedTag, (val) => {
   if (val === null) return;
+  page.value = 0;
   if (activeTab.value === 'forYou') fetchForYou();
   else fetchFollowing();
 });
@@ -125,11 +131,27 @@ const fetchForYou = async () => {
   loading.value = true;
   error.value = null;
   try {
-    const params = { sortBy: 'createdAt', sortOrder: 'desc' };
+    const params = {
+      sortBy: 'createdAt',
+      sortOrder: 'desc',
+      page: page.value,
+      size: pageSize.value
+    };
     if (selectedTag.value) params.tagName = selectedTag.value;
 
     const response = await postsService.getAll(params);
     posts.value = response.data;
+
+    // If we're on a page > 0 and got no results, go back to previous page
+    if (posts.value.length === 0 && page.value > 0) {
+      page.value--;
+      await fetchForYou();
+      return;
+    }
+
+    // Only enable "Next" if we got a full page of results
+    hasMore.value = posts.value.length === pageSize.value;
+
     checkAndScrollToPost();
   } catch (err) {
     console.error(err);
@@ -152,6 +174,7 @@ const fetchFollowing = async () => {
 
     if (followingList.length === 0) {
       posts.value = [];
+      hasMore.value = false;
       loading.value = false;
       return;
     }
@@ -166,7 +189,20 @@ const fetchFollowing = async () => {
     }
 
     finalPosts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    posts.value = finalPosts;
+
+    // Client-side pagination for following feed
+    const startIdx = page.value * pageSize.value;
+    const endIdx = startIdx + pageSize.value;
+    posts.value = finalPosts.slice(startIdx, endIdx);
+    hasMore.value = endIdx < finalPosts.length;
+
+    // If we're on a page > 0 and got no results, go back to previous page
+    if (posts.value.length === 0 && page.value > 0) {
+      page.value--;
+      await fetchFollowing();
+      return;
+    }
+
     checkAndScrollToPost();
   } catch (err) {
     console.error(err);
@@ -179,23 +215,45 @@ const fetchFollowing = async () => {
 const switchTab = (tabName) => {
   if (tabName === 'following' && !authStore.user) return alert("Login required.");
   activeTab.value = tabName;
+  page.value = 0;
   if (tabName === 'forYou') fetchForYou();
   else fetchFollowing();
 };
 
 const clearTagFilter = () => {
   selectedTag.value = null;
+  page.value = 0;
   if (activeTab.value === 'forYou') fetchForYou();
   else fetchFollowing();
 };
 
 const onPostCreated = () => {
   isModalOpen.value = false;
+  page.value = 0;
   if (activeTab.value === 'forYou') fetchForYou();
   else fetchFollowing();
 };
 
-// --- НОВО: Изтриване на пост от списъка ---
+// Pagination Navigation
+const nextPage = () => {
+  if (hasMore.value && !loading.value) {
+    page.value++;
+    if (activeTab.value === 'forYou') fetchForYou();
+    else fetchFollowing();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+};
+
+const prevPage = () => {
+  if (page.value > 0 && !loading.value) {
+    page.value--;
+    if (activeTab.value === 'forYou') fetchForYou();
+    else fetchFollowing();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+};
+
+// Remove post from list after deletion
 const removePost = (postId) => {
   posts.value = posts.value.filter(p => p.id !== postId);
 };
@@ -303,13 +361,13 @@ onMounted(async () => {
 
     <!-- CONTENT -->
     <div v-if="loading" class="state-msg">Loading discussions... ⏳</div>
-    <div v-if="error" class="state-msg error">{{ error }}</div>
+    <div v-else-if="error" class="state-msg error">{{ error }}</div>
+
+    <div v-else-if="posts.length === 0" class="state-msg">
+      No posts found.
+    </div>
 
     <div v-else class="posts-list">
-      <div v-if="posts.length === 0" class="state-msg">
-        No posts found.
-      </div>
-
       <div
           v-for="post in posts"
           :key="post.id"
@@ -321,6 +379,13 @@ onMounted(async () => {
             @post-deleted="removePost"
         />
       </div>
+    </div>
+
+    <!-- PAGINATION -->
+    <div v-if="!loading && !error" class="pagination">
+      <button @click="prevPage" :disabled="page === 0" class="page-btn">Previous</button>
+      <span class="page-count">Page {{ page + 1 }}</span>
+      <button @click="nextPage" :disabled="!hasMore || posts.length === 0" class="page-btn">Next</button>
     </div>
 
     <CreatePost v-if="isModalOpen" @close="isModalOpen = false" @post-created="onPostCreated" />
@@ -373,4 +438,11 @@ onMounted(async () => {
 
 .selected-tag-pill { margin-left: 12px; display: flex; align-items: center; gap: 8px; background: #fff6ec; border: 1px solid rgba(182,157,116,0.2); padding: 6px 10px; border-radius: 999px; font-weight: 700; color: var(--color-dark); }
 .pill-close { background: none; border: none; cursor: pointer; font-size: 12px; margin-left: 6px; }
+
+/* Pagination */
+.pagination { display: flex; justify-content: center; align-items: center; gap: 15px; margin: 25px 20px; }
+.page-btn { background: white; border: 1px solid #e2e8f0; padding: 8px 20px; border-radius: 50px; cursor: pointer; color: var(--color-dark); font-weight: 600; font-size: 14px; transition: all 0.2s; }
+.page-btn:hover:not(:disabled) { border-color: var(--color-dark); background: #f8fafc; }
+.page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.page-count { font-size: 14px; color: #94a3b8; font-weight: 600; }
 </style>

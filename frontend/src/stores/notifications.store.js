@@ -23,13 +23,11 @@ export const useNotificationStore = defineStore('notifications', {
                     page: 0, size: 20, sortBy: 'createdAt', sortOrder: 'desc'
                 });
 
-                // --- DEBUG LOGS (Виж конзолата на браузъра F12) ---
+                // --- DEBUG LOGS ---
                 console.log("Notifications Response:", response.data);
 
                 const allNotifs = response.data;
                 const filteredNotifs = allNotifs.filter(n => n.actor.id !== myId);
-
-                // ... (останалата логика за Popup си остава същата) ...
 
                 this.notifications = filteredNotifs;
                 this.unreadCount = this.notifications.filter(n => !n.isRead).length;

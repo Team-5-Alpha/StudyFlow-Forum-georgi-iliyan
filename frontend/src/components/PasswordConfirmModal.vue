@@ -76,7 +76,7 @@ const handleCancel = () => {
 .modal-card {
   background: var(--color-white);
   padding: 30px;
-  border-radius: 20px; /* По-заоблени ръбове */
+  border-radius: 20px;
   width: 100%; max-width: 420px;
   box-shadow: 0 20px 25px -5px rgba(0,0,0,0.15);
   text-align: center;
@@ -99,7 +99,7 @@ const handleCancel = () => {
 .icon-circle {
   width: 60px;
   height: 60px;
-  background-color: #fdf6e7; /* Много светло златисто/кремаво */
+  background-color: #fdf6e7;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -109,7 +109,7 @@ const handleCancel = () => {
 .lock-icon {
   width: 32px;
   height: 32px;
-  color: var(--color-accent); /* Златистото от темата */
+  color: var(--color-accent);
 }
 
 h3 { margin-top: 0; color: var(--color-dark); margin-bottom: 8px; font-size: 20px; }

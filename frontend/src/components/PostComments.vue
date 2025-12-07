@@ -15,7 +15,6 @@ const authStore = useAuthStore();
 const newCommentContent = ref('');
 const isSubmitting = ref(false);
 
-// Използваме composable логиката
 const {
   structuredComments,
   loading,
@@ -23,12 +22,10 @@ const {
   addComment
 } = useComments(props.postId);
 
-// Зареждаме коментарите при монтиране
 onMounted(() => {
   loadComments();
 });
 
-// Създаване на нов коментар (Top-level)
 const handleSubmit = async () => {
   if (!newCommentContent.value.trim() || newCommentContent.value.length < 4) return;
 
@@ -56,7 +53,6 @@ const handleSubmit = async () => {
         No comments yet. Be the first to share your thoughts!
       </div>
 
-      <!-- Рекурсивен рендеринг чрез CommentItem -->
       <CommentItem
           v-for="comment in structuredComments"
           :key="comment.id"
@@ -97,10 +93,10 @@ const handleSubmit = async () => {
   margin-top: 15px;
   border-top: 1px solid #f1f1f1;
   padding-top: 15px;
-  background-color: #fafafa; /* Леко разграничаване от поста */
-  border-radius: 0 0 16px 16px; /* Заобляне само отдолу */
+  background-color: #fafafa;
+  border-radius: 0 0 16px 16px;
   padding: 15px 20px;
-  margin-left: -20px; /* Компенсация за падинга на родителя */
+  margin-left: -20px;
   margin-right: -20px;
   margin-bottom: -20px;
 }

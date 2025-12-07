@@ -21,6 +21,8 @@ public interface PostService {
 
     void likePost(Long postId, User user);
 
+    Post toggleLike(Long postId, User actingUser);
+
     void unlikePost(Long postId, User user);
 
     long countByAuthor(Long authorId);

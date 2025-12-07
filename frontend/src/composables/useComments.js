@@ -7,16 +7,14 @@ export function useComments(postId) {
     const loading = ref(false);
     const error = ref(null);
 
-    // --- O(n) STRUCTURED COMMENTS ---
-    // Превръща плосък списък в дърво само с едно минаване през масива
+    // --- STRUCTURE COMMENTS ---
     const structuredComments = computed(() => {
         if (!comments.value.length) return [];
 
         const map = new Map();
         const roots = [];
 
-        // 1. Инициализираме мапа и добавяме поле 'replies' към всеки коментар
-        // Важно: Правим shallow copy, за да не счупим реактивността, но да имаме структура
+
         comments.value.forEach(c => {
             // Уверяваме се, че полетата за лайк съществуват
             if (c.isLiked === undefined) c.isLiked = false;
@@ -25,7 +23,7 @@ export function useComments(postId) {
             map.set(c.id, { ...c, replies: [] });
         });
 
-        // 2. Свързваме децата с родителите
+
         comments.value.forEach(c => {
             const node = map.get(c.id);
             if (c.parentCommentId && map.has(c.parentCommentId)) {
@@ -36,7 +34,6 @@ export function useComments(postId) {
             }
         });
 
-        // 3. Сортираме корените (най-старите първи или както предпочиташ)
         return roots.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     });
 
@@ -65,11 +62,10 @@ export function useComments(postId) {
             }
 
             const newComment = res.data;
-            // Важно: сетваме parentId ръчно, ако бекендът не го върне веднага в респонса
             if (parentId) newComment.parentCommentId = parentId;
 
             comments.value.push(newComment);
-            return true; // Success
+            return true;
         } catch (err) {
             alert("Failed to add comment: " + err.message);
             return false;
@@ -80,7 +76,6 @@ export function useComments(postId) {
     const editComment = async (id, newContent) => {
         try {
             const res = await commentsService.update(id, { content: newContent });
-            // Намираме и обновяваме в локалния масив
             const index = comments.value.findIndex(c => c.id === id);
             if (index !== -1) {
                 comments.value[index].content = res.data.content;
@@ -110,7 +105,6 @@ export function useComments(postId) {
 
         const wasLiked = comment.isLiked;
 
-        // Optimistic Update
         comment.isLiked = !wasLiked;
         comment.likeCount += wasLiked ? -1 : 1;
 
@@ -121,7 +115,6 @@ export function useComments(postId) {
                 await commentsService.unlikeComment(commentId);
             }
         } catch (err) {
-            // Revert
             comment.isLiked = wasLiked;
             comment.likeCount += wasLiked ? 1 : -1;
         }

@@ -10,7 +10,7 @@ const authStore = useAuthStore();
 const loading = ref(false);
 const error = ref(null);
 
-// State за таговете
+// State
 const availableTags = ref([]);
 const selectedTags = ref([]);
 
@@ -36,13 +36,11 @@ const toggleTag = (tagName) => {
   }
 };
 
-// Валидации
 const isTitleValid = computed(() => formData.value.title.length >= 16 && formData.value.title.length <= 64);
 const isContentValid = computed(() => formData.value.content.length >= 32);
 
-// Helper за класовете на подсказките
 const getHintClass = (text, isValid) => {
-  if (text.length === 0) return ''; // Неутрален цвят ако е празно
+  if (text.length === 0) return '';
   return isValid ? 'valid' : 'invalid';
 };
 
@@ -103,7 +101,7 @@ const handleCreatePost = async () => {
               placeholder="Enter topic title..."
               class="input-field title-input"
           />
-          <!-- ТЕКСТ С ИЗИСКВАНИЯТА -->
+          <!-- TEXT WITH VALIDATIONS -->
           <p class="input-hint" :class="getHintClass(formData.title, isTitleValid)">
             Must be between 16 and 64 characters.
           </p>
@@ -118,7 +116,7 @@ const handleCreatePost = async () => {
               rows="5"
               class="input-field content-input"
           ></textarea>
-          <!-- ТЕКСТ С ИЗИСКВАНИЯТА -->
+          <!-- TEXT WITH VALIDATIONS -->
           <p class="input-hint" :class="getHintClass(formData.content, isContentValid)">
             Must be at least 32 characters.
           </p>
@@ -199,18 +197,18 @@ const handleCreatePost = async () => {
 .input-hint {
   font-size: 12px;
   margin-top: 5px;
-  color: #94a3b8; /* Неутрално сиво по подразбиране */
+  color: #94a3b8;
   font-weight: 500;
   transition: color 0.2s;
 }
 
 .input-hint.valid {
-  color: var(--color-dark); /* Тъмносиньо при успех - съвпада с темата */
+  color: var(--color-dark);
   opacity: 0.8;
 }
 
 .input-hint.invalid {
-  color: #ef4444; /* Червено при грешка */
+  color: #ef4444;
 }
 
 /* TAGS */

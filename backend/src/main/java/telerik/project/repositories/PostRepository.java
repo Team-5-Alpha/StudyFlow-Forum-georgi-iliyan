@@ -33,4 +33,7 @@ public interface PostRepository extends JpaRepository<Post, Long>, JpaSpecificat
     @Query("SELECT p FROM Post p LEFT JOIN FETCH p.likedByUsers WHERE p.id = :id")
     Optional<Post> findByIdWithLikes(@Param("id") Long id);
 
+    @Query("SELECT DISTINCT p FROM Post p LEFT JOIN FETCH p.likedByUsers")
+    List<Post> findAllWithLikes();
+
 }

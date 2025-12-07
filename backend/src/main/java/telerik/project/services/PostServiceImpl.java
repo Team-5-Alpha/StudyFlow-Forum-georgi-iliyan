@@ -6,7 +6,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import telerik.project.exceptions.EntityNotFoundException;
 import telerik.project.helpers.AuthorizationHelper;
-import telerik.project.helpers.validators.ActionValidationHelper;
 import telerik.project.helpers.validators.PostValidationHelper;
 import telerik.project.models.Post;
 import telerik.project.models.Tag;
@@ -64,7 +63,7 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional(readOnly = true)
     public Post getById(Long id) {
-        Post post = postRepository.findById(id)
+        Post post = postRepository.findByIdWithLikes(id)
                 .orElseThrow(() -> new EntityNotFoundException("Post", id));
 
         PostValidationHelper.validateNotDeleted(post);
@@ -180,6 +179,30 @@ public class PostServiceImpl implements PostService {
         }
     }
 
+    @Override
+    @Transactional
+    public Post toggleLike(Long postId, User actingUser) {
+        Post post = postRepository.findByIdWithLikes(postId)
+                .orElseThrow(() -> new EntityNotFoundException("Post", postId));
+
+        PostValidationHelper.validateNotDeleted(post);
+
+        if (post.getLikedByUsers().contains(actingUser)) {
+            post.getLikedByUsers().remove(actingUser);
+        } else {
+            post.getLikedByUsers().add(actingUser);
+
+            if (!actingUser.getId().equals(post.getAuthor().getId())) {
+                try {
+                    notificationService.send(actingUser, post.getAuthor(), postId, "POST", "LIKED");
+                } catch (Exception e) {
+                    System.err.println("Failed to send like notification: " + e.getMessage());
+                }
+            }
+        }
+
+        return postRepository.save(post);
+    }
 
     @Override
     @Transactional(readOnly = true)

@@ -5,11 +5,9 @@ import { RouterLink, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth.store';
 import usersService from '../services/users.service';
 
-// Composables
 import { usePostActions } from '../composables/usePostActions';
 import { usePostEditing } from '../composables/usePostEditing';
 
-// Components
 import PostContent from './PostContent.vue';
 import PostTags from './PostTags.vue';
 import PostActions from './PostActions.vue';

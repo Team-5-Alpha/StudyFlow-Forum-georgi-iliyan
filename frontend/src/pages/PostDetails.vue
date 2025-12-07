@@ -11,7 +11,6 @@ const error = ref(null);
 
 onMounted(async () => {
   try {
-    // Взимаме ID-то от URL-а (напр. /post/15)
     const postId = route.params.id;
     const response = await postsService.getById(postId);
     post.value = response.data;
@@ -36,7 +35,6 @@ onMounted(async () => {
     <div v-if="error" class="state-msg error">{{ error }}</div>
 
     <div v-else-if="post">
-      <!-- Използваме новия модулен компонент -->
       <PostCard :post="post" />
     </div>
 

@@ -17,14 +17,14 @@ const loading = ref(false);
 const error = ref(null);
 const availableTags = ref([]);
 
-// Локално състояние на формата (копираме данните от пропса)
+
 const editForm = ref({
   title: props.post.title,
   content: props.post.content,
   tags: [...(props.post.tags || [])]
 });
 
-// Зареждаме таговете при отваряне
+
 onMounted(async () => {
   try {
     const res = await tagsService.getAll();
@@ -34,17 +34,17 @@ onMounted(async () => {
   }
 });
 
-// Валидация
+// VALIDATIONS
 const isTitleValid = computed(() => editForm.value.title.length >= 16 && editForm.value.title.length <= 64);
 const isContentValid = computed(() => editForm.value.content.length >= 32);
 
-// Helper за UI подсказки
+// HELPER FOR UI
 const getHintClass = (text, isValid) => {
   if (!text || text.length === 0) return '';
   return isValid ? 'valid-hint' : 'invalid-hint';
 };
 
-// Логика за тагове
+// TAGS
 const toggleTag = (tagName) => {
   if (editForm.value.tags.includes(tagName)) {
     editForm.value.tags = editForm.value.tags.filter(t => t !== tagName);
@@ -62,7 +62,6 @@ const handleSave = async () => {
   try {
     const response = await postsService.update(props.post.id, editForm.value);
 
-    // Изпращаме обновения обект към родителя
     emit('updated', response.data);
     emit('close');
   } catch (err) {

@@ -4,7 +4,7 @@ import tagsService from '../../services/tags.service';
 
 const props = defineProps({
   show: Boolean,
-  activeTag: String // Текущо избран таг
+  activeTag: String
 });
 
 const emit = defineEmits(['close', 'apply']);
@@ -22,7 +22,6 @@ onMounted(async () => {
 });
 
 const selectTag = (tagName) => {
-  // Toggle logic
   if (selectedTag.value === tagName) {
     selectedTag.value = null;
   } else {

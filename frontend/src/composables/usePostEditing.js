@@ -2,23 +2,17 @@ import { ref, computed } from 'vue';
 import postsService from '../services/posts.service';
 import tagsService from '../services/tags.service';
 
-/**
- * Логика за редактиране на пост
- * @param {Ref<Object>} postRef - Реактивна референция към обекта на поста (за да го обновим при успех)
- */
 export function usePostEditing(postRef) {
     const isEditing = ref(false);
     const isSaving = ref(false);
     const availableTags = ref([]);
 
-    // Формата за редакция (копие на данните)
     const editForm = ref({
         title: '',
         content: '',
         tags: []
     });
 
-    // Валидация (същата логика като в CreatePost)
     const isEditValid = computed(() =>
         editForm.value.title.length >= 16 &&
         editForm.value.title.length <= 64 &&
@@ -26,16 +20,13 @@ export function usePostEditing(postRef) {
     );
 
     // --- ACTIONS ---
-
     const startEdit = async () => {
-        // 1. Попълваме формата с текущите данни от поста
         editForm.value = {
             title: postRef.value.title,
             content: postRef.value.content,
-            tags: [...(postRef.value.tags || [])] // Копираме масива, за да не мутираме директно
+            tags: [...(postRef.value.tags || [])]
         };
 
-        // 2. Зареждаме възможните тагове от бекенда (ако още не са заредени)
         if (availableTags.value.length === 0) {
             try {
                 const res = await tagsService.getAll();
@@ -50,7 +41,6 @@ export function usePostEditing(postRef) {
 
     const cancelEdit = () => {
         isEditing.value = false;
-        // Можем да изчистим формата, но не е задължително, тъй като startEdit я презаписва
     };
 
     const saveEdit = async () => {
@@ -60,8 +50,6 @@ export function usePostEditing(postRef) {
         try {
             const res = await postsService.update(postRef.value.id, editForm.value);
 
-            // 3. Обновяваме локалния обект (postRef) с новите данни от сървъра
-            // Това веднага се отразява в UI-а на PostCard
             postRef.value.title = res.data.title;
             postRef.value.content = res.data.content;
             postRef.value.tags = res.data.tags;

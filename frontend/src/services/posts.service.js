@@ -38,6 +38,10 @@ export default {
         return apiClient.post(`/posts/${id}/likes`);
     },
 
+    toggleLike(postId) {
+        return apiClient.post(`/posts/${postId}/like`);
+    },
+
     unlike(id) {
         return apiClient.delete(`/posts/${id}/likes`);
     },

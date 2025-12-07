@@ -28,6 +28,6 @@ defineProps({
 .comments-list {
   display: flex;
   flex-direction: column;
-  gap: 16px; /* Разстояние между главните коментари */
+  gap: 16px;
 }
 </style>

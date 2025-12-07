@@ -3,6 +3,7 @@ package telerik.project.controllers.rest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import telerik.project.helpers.AuthenticationHelper;
 import telerik.project.helpers.mappers.CommentMapper;
@@ -20,7 +21,9 @@ import telerik.project.models.filters.PostFilterOptions;
 import telerik.project.services.contracts.CommentService;
 import telerik.project.services.contracts.PostService;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -45,7 +48,6 @@ public class PostRestController {
             @RequestParam(defaultValue = "0") Integer page,
             @RequestParam(defaultValue = "10") Integer size
     ) {
-        // Взимаме текущия потребител (или null)
         User currentUser = AuthenticationHelper.tryGetLoggedUser();
 
         PostFilterOptions filterOptions = new PostFilterOptions(
@@ -53,7 +55,6 @@ public class PostRestController {
                 sortBy, sortOrder, page, size);
 
         return postService.getAll(filterOptions).stream()
-                // Подаваме юзъра на мапъра
                 .map(post -> postMapper.toResponse(post, currentUser))
                 .collect(Collectors.toList());
     }
@@ -83,8 +84,6 @@ public class PostRestController {
                 .collect(Collectors.toList());
     }
 
-    // ... Останалите методи са същите ...
-
     @GetMapping("/{postId}/comments")
     public List<CommentResponseDTO> getComments(
             @PathVariable Long postId,
@@ -92,7 +91,7 @@ public class PostRestController {
             @RequestParam(defaultValue = "10") Integer size) {
         CommentFilterOptions filterOptions = new CommentFilterOptions(postId, null, null, null, null, null, page, size);
         return commentService.getAll(filterOptions).stream()
-                .map(commentMapper::toResponse) // Тук можеш да направиш същото за коментарите, ако искаш isLiked и там
+                .map(commentMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
@@ -101,7 +100,6 @@ public class PostRestController {
     public PostResponseDTO create(@Valid @RequestBody PostCreateDTO dto) {
         User actingUser = AuthenticationHelper.getLoggedUser();
         Post post = postService.create(dto, actingUser);
-        // При създаване е ясно, че авторът не го е лайкнал още
         return postMapper.toResponse(post, actingUser);
     }
 
@@ -137,6 +135,22 @@ public class PostRestController {
         Post updatedPost = postService.getById(id);
         return postMapper.toResponse(updatedPost, actingUser);
     }
+
+    @PostMapping("/{id}/like")
+    public ResponseEntity<Map<String, Object>> toggleLike(@PathVariable Long id) {
+        User actingUser = AuthenticationHelper.getLoggedUser();
+        Post post = postService.toggleLike(id, actingUser);
+
+        boolean likedByCurrentUser = post.getLikedByUsers().stream()
+                .anyMatch(user -> user.getId().equals(actingUser.getId()));
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("likedByCurrentUser", likedByCurrentUser);
+        response.put("likesCount", post.getLikedByUsers().size());
+
+        return ResponseEntity.ok(response);
+    }
+
 
     @PostMapping("/{id}/comments")
     @ResponseStatus(HttpStatus.CREATED)

@@ -14,7 +14,6 @@ const emit = defineEmits(['submit', 'cancel']);
 const content = ref(props.initialValue);
 const inputRef = ref(null);
 
-// Ако родителят подаде нова начална стойност (напр. при редакция)
 watch(() => props.initialValue, (val) => {
   content.value = val;
 });
@@ -29,7 +28,6 @@ const handleSubmit = () => {
   content.value = ''; // Изчистваме след успех
 };
 
-// Експортираме метода focus, за да може родителят да го вика
 defineExpose({ focus });
 </script>
 
@@ -73,7 +71,7 @@ defineExpose({ focus });
   gap: 8px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 20px; /* Pill shape */
+  border-radius: 20px;
   padding: 6px 12px;
   transition: border-color 0.2s, box-shadow 0.2s;
   width: 100%;

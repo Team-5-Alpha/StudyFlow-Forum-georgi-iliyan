@@ -1,43 +1,40 @@
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import postsService from '../services/posts.service';
 
 export function usePostActions(initialPost, emit) {
     const post = ref(initialPost);
-    const isLiked = ref(initialPost.isLiked || false);
+    const isLiked = ref(initialPost.likedByCurrentUser || false);
     const likesCount = ref(initialPost.likesCount || 0);
     const isDeleting = ref(false);
     const isLikeLoading = ref(false);
 
+    watch(() => initialPost, (newPost) => {
+        post.value = newPost;
+        isLiked.value = newPost.likedByCurrentUser || false;
+        likesCount.value = newPost.likesCount || 0;
+    }, { deep: true });
+
     const toggleLike = async () => {
-        // Prevent duplicate requests
         if (isLikeLoading.value) return;
 
-        // Store previous state for rollback
         const previousLiked = isLiked.value;
         const previousCount = likesCount.value;
 
-        // Optimistic update
         isLiked.value = !isLiked.value;
         likesCount.value = isLiked.value ? likesCount.value + 1 : likesCount.value - 1;
         isLikeLoading.value = true;
 
         try {
-            let response;
-            if (isLiked.value) {
-                response = await postsService.like(post.value.id);
-            } else {
-                response = await postsService.unlike(post.value.id);
-            }
+            const response = await postsService.toggleLike(post.value.id);
 
-            // Update from backend response
             if (response.data) {
-                post.value = response.data;
-                isLiked.value = response.data.isLiked;
+                isLiked.value = response.data.likedByCurrentUser;
                 likesCount.value = response.data.likesCount;
+                post.value.likedByCurrentUser = response.data.likedByCurrentUser;
+                post.value.likesCount = response.data.likesCount;
             }
         } catch (err) {
-            console.error('Like action failed', err);
-            // Rollback on error
+            console.error('Like toggle failed:', err);
             isLiked.value = previousLiked;
             likesCount.value = previousCount;
         } finally {
@@ -51,7 +48,7 @@ export function usePostActions(initialPost, emit) {
             await postsService.delete(post.value.id);
             emit('post-deleted', post.value.id);
         } catch (err) {
-            console.error('Delete failed', err);
+            console.error('Delete failed:', err);
             alert('Failed to delete post.');
         } finally {
             isDeleting.value = false;

@@ -27,7 +27,7 @@ defineProps({
   color: var(--color-accent);
   font-weight: 600;
   font-size: 13px;
-  background-color: #f9f5f0; /* Много светло бежово/златисто */
+  background-color: #f9f5f0;
   padding: 2px 8px;
   border-radius: 12px;
   cursor: pointer;
