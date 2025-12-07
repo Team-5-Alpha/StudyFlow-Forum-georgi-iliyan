@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import postsService from '../services/posts.service';
-import PostCard from '../components/PostCard.vue';
+import PostCard from '../components/posts/PostCard.vue';
 
 const route = useRoute();
 const post = ref(null);

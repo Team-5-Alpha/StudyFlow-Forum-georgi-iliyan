@@ -2,18 +2,20 @@
 import { ref, computed, onMounted } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 
-import { useAuthStore } from '../stores/auth.store';
-import usersService from '../services/users.service';
+import { useAuthStore } from '../../stores/auth.store';
+import usersService from '../../services/users.service';
 
-import { usePostActions } from '../composables/usePostActions';
-import { usePostEditing } from '../composables/usePostEditing';
+// Composables
+import { usePostActions } from '../../composables/usePostActions';
+import { usePostEditing } from '../../composables/usePostEditing';
 
+// Components
 import PostContent from './PostContent.vue';
 import PostTags from './PostTags.vue';
 import PostActions from './PostActions.vue';
 import PostComments from './PostComments.vue';
-import PostEditModal from './PostEditModal.vue';
-import ConfirmModal from './ConfirmModal.vue';
+import PostEditModal from '../modals/PostEditModal.vue';
+import ConfirmModal from '../modals/ConfirmModal.vue';
 
 const props = defineProps({
   post: { type: Object, required: true }

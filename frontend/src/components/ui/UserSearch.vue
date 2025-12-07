@@ -1,7 +1,7 @@
 <script setup>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import usersService from '../services/users.service';
+import usersService from '../../services/users.service';
 
 const router = useRouter();
 const searchQuery = ref('');

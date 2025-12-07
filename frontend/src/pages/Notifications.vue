@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useNotificationStore } from '../stores/notifications.store';
-import ConfirmModal from '../components/ConfirmModal.vue';
+import ConfirmModal from '../components/modals/ConfirmModal.vue';
 
 const notifStore = useNotificationStore();
 const router = useRouter();

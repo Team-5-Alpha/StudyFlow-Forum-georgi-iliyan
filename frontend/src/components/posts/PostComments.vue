@@ -1,8 +1,8 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import { useAuthStore } from '../stores/auth.store';
-import { useComments } from '../composables/useComments';
-import CommentItem from './CommentItem.vue';
+import { useAuthStore } from '../../stores/auth.store';
+import { useComments } from '../../composables/useComments';
+import CommentItem from '../comments/CommentItem.vue';
 
 const props = defineProps({
   postId: {

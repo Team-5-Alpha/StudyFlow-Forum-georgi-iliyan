@@ -1,5 +1,9 @@
 package telerik.project.controllers.rest;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -20,21 +24,23 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/comments")
 @RequiredArgsConstructor
+@Tag(name = "Comments", description = "API for managing comments on posts")
 public class CommentRestController {
 
     private final CommentService commentService;
     private final CommentMapper commentMapper;
 
+    @Operation(summary = "Get all comments", description = "Retrieve comments with optional filtering")
     @GetMapping
     public List<CommentResponseDTO> getAll(
-            @RequestParam(required = false) Long postId,
-            @RequestParam(required = false) Long authorId,
-            @RequestParam(required = false) Long parentCommentId,
-            @RequestParam(required = false) Boolean isDeleted,
-            @RequestParam(required = false) String sortBy,
-            @RequestParam(required = false) String sortOrder,
-            @RequestParam(defaultValue = "0") Integer page,
-            @RequestParam(defaultValue = "10") Integer size
+            @Parameter(description = "Filter by post ID") @RequestParam(required = false) Long postId,
+            @Parameter(description = "Filter by author ID") @RequestParam(required = false) Long authorId,
+            @Parameter(description = "Filter by parent comment ID") @RequestParam(required = false) Long parentCommentId,
+            @Parameter(description = "Filter by deletion status") @RequestParam(required = false) Boolean isDeleted,
+            @Parameter(description = "Sort field") @RequestParam(required = false) String sortBy,
+            @Parameter(description = "Sort order") @RequestParam(required = false) String sortOrder,
+            @Parameter(description = "Page number") @RequestParam(defaultValue = "0") Integer page,
+            @Parameter(description = "Page size") @RequestParam(defaultValue = "10") Integer size
     ) {
         CommentFilterOptions filterOptions = new CommentFilterOptions(
                 postId, authorId, parentCommentId,
@@ -45,22 +51,26 @@ public class CommentRestController {
                 .collect(Collectors.toList());
     }
 
+    @Operation(summary = "Get comment by ID")
     @GetMapping("/{id}")
-    public CommentResponseDTO getById(@PathVariable Long id) {
+    public CommentResponseDTO getById(@Parameter(description = "Comment ID") @PathVariable Long id) {
         return commentMapper.toResponse(commentService.getById(id));
     }
 
+    @Operation(summary = "Get comment replies")
     @GetMapping("/{id}/replies")
-    public List<CommentResponseDTO> getReplies(@PathVariable Long id) {
+    public List<CommentResponseDTO> getReplies(@Parameter(description = "Comment ID") @PathVariable Long id) {
         return commentService.getReplies(id).stream()
                 .map(commentMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
+    @Operation(summary = "Create comment reply", description = "Create a reply to an existing comment",
+            security = @SecurityRequirement(name = "bearerAuth"))
     @PostMapping("/{id}")
     @ResponseStatus(HttpStatus.CREATED)
     public CommentResponseDTO create(
-            @PathVariable Long id,
+            @Parameter(description = "Parent comment ID") @PathVariable Long id,
             @Valid @RequestBody CommentCreateDTO dto
     ) {
         User actingUser = AuthenticationHelper.getLoggedUser();
@@ -75,9 +85,10 @@ public class CommentRestController {
         return commentMapper.toResponse(reply);
     }
 
+    @Operation(summary = "Update comment", security = @SecurityRequirement(name = "bearerAuth"))
     @PutMapping("/{id}")
     public CommentResponseDTO update(
-            @PathVariable Long id,
+            @Parameter(description = "Comment ID") @PathVariable Long id,
             @Valid @RequestBody CommentUpdateDTO dto
     ) {
         User actingUser = AuthenticationHelper.getLoggedUser();
@@ -89,21 +100,24 @@ public class CommentRestController {
         return commentMapper.toResponse(commentService.getById(id));
     }
 
+    @Operation(summary = "Delete comment", security = @SecurityRequirement(name = "bearerAuth"))
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
+    public void delete(@Parameter(description = "Comment ID") @PathVariable Long id) {
         User actingUser = AuthenticationHelper.getLoggedUser();
         commentService.delete(id, actingUser);
     }
 
+    @Operation(summary = "Like comment", security = @SecurityRequirement(name = "bearerAuth"))
     @PostMapping("/{id}/likes")
-    public void like(@PathVariable Long id) {
+    public void like(@Parameter(description = "Comment ID") @PathVariable Long id) {
         User actingUser = AuthenticationHelper.getLoggedUser();
         commentService.likeComment(id, actingUser);
     }
 
+    @Operation(summary = "Unlike comment", security = @SecurityRequirement(name = "bearerAuth"))
     @DeleteMapping("/{id}/likes")
-    public void unlike(@PathVariable Long id) {
+    public void unlike(@Parameter(description = "Comment ID") @PathVariable Long id) {
         User actingUser = AuthenticationHelper.getLoggedUser();
         commentService.unlikeComment(id, actingUser);
     }

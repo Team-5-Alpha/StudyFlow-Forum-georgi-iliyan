@@ -5,9 +5,9 @@ import { useRoute, useRouter } from 'vue-router';
 import postsService from '../services/posts.service';
 import usersService from '../services/users.service';
 import tagsService from '../services/tags.service';
-import UserSearch from '../components/UserSearch.vue';
-import CreatePost from '../components/CreatePost.vue';
-import PostCard from '../components/PostCard.vue';
+import UserSearch from '../components/ui/UserSearch.vue';
+import CreatePost from '../components/posts/CreatePost.vue';
+import PostCard from '../components/posts/PostCard.vue';
 
 const authStore = useAuthStore();
 const route = useRoute();

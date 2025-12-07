@@ -1,10 +1,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { RouterLink } from 'vue-router';
-import { useAuthStore } from '../stores/auth.store';
-import commentsService from '../services/comments.service';
-import usersService from '../services/users.service';
-import ConfirmModal from './ConfirmModal.vue';
+import { useAuthStore } from '../../stores/auth.store';
+import commentsService from '../../services/comments.service';
+import usersService from '../../services/users.service';
+import ConfirmModal from '../modals/ConfirmModal.vue';
 
 const props = defineProps({
   comment: {

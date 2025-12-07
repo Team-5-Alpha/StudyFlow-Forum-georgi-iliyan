@@ -4,7 +4,8 @@ import { RouterLink, useRouter } from 'vue-router';
 import adminService from '../services/admin.service';
 import usersService from '../services/users.service';
 import { useAuthStore } from '../stores/auth.store';
-import ConfirmModal from '../components/ConfirmModal.vue';
+import ConfirmModal from '../components/modals/ConfirmModal.vue';
+import AdminAlerts from '../components/admin/AdminAlerts.vue';
 import { useAdminAlert } from '../composables/useAdminAlert';
 
 const authStore = useAuthStore();

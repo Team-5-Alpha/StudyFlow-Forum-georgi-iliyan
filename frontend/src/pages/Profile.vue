@@ -3,8 +3,8 @@ import { ref, onMounted, computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth.store';
 import usersService from '../services/users.service';
-import PostCard from '../components/PostCard.vue';
-import PasswordConfirmModal from '../components/PasswordConfirmModal.vue';
+import PostCard from '../components/posts/PostCard.vue';
+import PasswordConfirmModal from '../components/modals/PasswordConfirmModal.vue';
 import { getAuth, updateEmail, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 
 const route = useRoute();

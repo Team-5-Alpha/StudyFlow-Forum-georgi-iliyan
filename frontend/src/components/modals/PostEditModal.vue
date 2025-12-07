@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import postsService from '../services/posts.service';
-import tagsService from '../services/tags.service';
+import postsService from '../../services/posts.service';
+import tagsService from '../../services/tags.service';
 
 const props = defineProps({
   show: Boolean,

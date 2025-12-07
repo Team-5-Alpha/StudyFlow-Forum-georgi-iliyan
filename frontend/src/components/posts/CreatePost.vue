@@ -1,8 +1,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { useAuthStore } from '../stores/auth.store';
-import postsService from '../services/posts.service';
-import tagsService from '../services/tags.service';
+import { useAuthStore } from '../../stores/auth.store';
+import postsService from '../../services/posts.service';
+import tagsService from '../../services/tags.service';
 
 const emit = defineEmits(['post-created', 'close']);
 

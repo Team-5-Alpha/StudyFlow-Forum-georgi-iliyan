@@ -1,5 +1,13 @@
 package telerik.project.controllers.rest;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -29,6 +37,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/posts")
 @RequiredArgsConstructor
+@Tag(name = "Posts", description = "API for managing forum posts")
 public class PostRestController {
 
     private final PostService postService;
@@ -36,17 +45,22 @@ public class PostRestController {
     private final PostMapper postMapper;
     private final CommentMapper commentMapper;
 
+    @Operation(summary = "Get all posts", description = "Retrieve all posts with optional filtering and pagination")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successfully retrieved posts"),
+            @ApiResponse(responseCode = "400", description = "Invalid parameters")
+    })
     @GetMapping
     public List<PostResponseDTO> getAll(
-            @RequestParam(required = false) String title,
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) Long authorId,
-            @RequestParam(required = false) String tagName,
-            @RequestParam(required = false) Boolean isDeleted,
-            @RequestParam(required = false) String sortBy,
-            @RequestParam(required = false) String sortOrder,
-            @RequestParam(defaultValue = "0") Integer page,
-            @RequestParam(defaultValue = "10") Integer size
+            @Parameter(description = "Filter by post title") @RequestParam(required = false) String title,
+            @Parameter(description = "Filter by keyword in content") @RequestParam(required = false) String keyword,
+            @Parameter(description = "Filter by author ID") @RequestParam(required = false) Long authorId,
+            @Parameter(description = "Filter by tag name") @RequestParam(required = false) String tagName,
+            @Parameter(description = "Filter by deletion status") @RequestParam(required = false) Boolean isDeleted,
+            @Parameter(description = "Sort field (e.g., createdAt, likesCount)") @RequestParam(required = false) String sortBy,
+            @Parameter(description = "Sort order (asc/desc)") @RequestParam(required = false) String sortOrder,
+            @Parameter(description = "Page number (0-indexed)") @RequestParam(defaultValue = "0") Integer page,
+            @Parameter(description = "Page size") @RequestParam(defaultValue = "10") Integer size
     ) {
         User currentUser = AuthenticationHelper.tryGetLoggedUser();
 
@@ -59,15 +73,22 @@ public class PostRestController {
                 .collect(Collectors.toList());
     }
 
+    @Operation(summary = "Get post by ID", description = "Retrieve a specific post by its ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Post found"),
+            @ApiResponse(responseCode = "404", description = "Post not found")
+    })
     @GetMapping("/{id}")
-    public PostResponseDTO getById(@PathVariable Long id) {
+    public PostResponseDTO getById(@Parameter(description = "Post ID") @PathVariable Long id) {
         User currentUser = AuthenticationHelper.tryGetLoggedUser();
         Post post = postService.getById(id);
         return postMapper.toResponse(post, currentUser);
     }
 
+    @Operation(summary = "Get latest posts", description = "Retrieve the most recent posts")
     @GetMapping("/latest")
-    public List<PostResponseDTO> getLatest(@RequestParam(defaultValue = "10") int limit) {
+    public List<PostResponseDTO> getLatest(
+            @Parameter(description = "Maximum number of posts to return") @RequestParam(defaultValue = "10") int limit) {
         User currentUser = AuthenticationHelper.tryGetLoggedUser();
         return postService.getMostRecent().stream()
                 .limit(limit)
@@ -75,8 +96,10 @@ public class PostRestController {
                 .collect(Collectors.toList());
     }
 
+    @Operation(summary = "Get top commented posts", description = "Retrieve posts with most comments")
     @GetMapping("/top-commented")
-    public List<PostResponseDTO> getTopCommented(@RequestParam(defaultValue = "10") int limit) {
+    public List<PostResponseDTO> getTopCommented(
+            @Parameter(description = "Maximum number of posts to return") @RequestParam(defaultValue = "10") int limit) {
         User currentUser = AuthenticationHelper.tryGetLoggedUser();
         return postService.getMostCommented().stream()
                 .limit(limit)
@@ -84,17 +107,25 @@ public class PostRestController {
                 .collect(Collectors.toList());
     }
 
+    @Operation(summary = "Get post comments", description = "Retrieve all comments for a specific post")
     @GetMapping("/{postId}/comments")
     public List<CommentResponseDTO> getComments(
-            @PathVariable Long postId,
-            @RequestParam(defaultValue = "0") Integer page,
-            @RequestParam(defaultValue = "10") Integer size) {
+            @Parameter(description = "Post ID") @PathVariable Long postId,
+            @Parameter(description = "Page number") @RequestParam(defaultValue = "0") Integer page,
+            @Parameter(description = "Page size") @RequestParam(defaultValue = "10") Integer size) {
         CommentFilterOptions filterOptions = new CommentFilterOptions(postId, null, null, null, null, null, page, size);
         return commentService.getAll(filterOptions).stream()
                 .map(commentMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
+    @Operation(summary = "Create a new post", description = "Create a new forum post (requires authentication)",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Post created successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid input"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public PostResponseDTO create(@Valid @RequestBody PostCreateDTO dto) {
@@ -103,9 +134,17 @@ public class PostRestController {
         return postMapper.toResponse(post, actingUser);
     }
 
+    @Operation(summary = "Update a post", description = "Update an existing post (requires authentication and ownership)",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Post updated successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @ApiResponse(responseCode = "403", description = "Forbidden - not the owner"),
+            @ApiResponse(responseCode = "404", description = "Post not found")
+    })
     @PutMapping("/{id}")
     public PostResponseDTO update(
-            @PathVariable Long id,
+            @Parameter(description = "Post ID") @PathVariable Long id,
             @Valid @RequestBody PostUpdateDTO dto
     ) {
         User actingUser = AuthenticationHelper.getLoggedUser();
@@ -113,31 +152,45 @@ public class PostRestController {
         return postMapper.toResponse(postService.getById(id), actingUser);
     }
 
+    @Operation(summary = "Delete a post", description = "Delete a post (requires authentication and ownership or admin role)",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Post deleted successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @ApiResponse(responseCode = "403", description = "Forbidden"),
+            @ApiResponse(responseCode = "404", description = "Post not found")
+    })
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
+    public void delete(@Parameter(description = "Post ID") @PathVariable Long id) {
         User actingUser = AuthenticationHelper.getLoggedUser();
         postService.delete(id, actingUser);
     }
 
+    @Operation(summary = "Like a post", description = "Add a like to a post (requires authentication)",
+            security = @SecurityRequirement(name = "bearerAuth"))
     @PostMapping("/{id}/likes")
-    public PostResponseDTO like(@PathVariable Long id) {
+    public PostResponseDTO like(@Parameter(description = "Post ID") @PathVariable Long id) {
         User actingUser = AuthenticationHelper.getLoggedUser();
         postService.likePost(id, actingUser);
         Post updatedPost = postService.getById(id);
         return postMapper.toResponse(updatedPost, actingUser);
     }
 
+    @Operation(summary = "Unlike a post", description = "Remove a like from a post (requires authentication)",
+            security = @SecurityRequirement(name = "bearerAuth"))
     @DeleteMapping("/{id}/likes")
-    public PostResponseDTO unlike(@PathVariable Long id) {
+    public PostResponseDTO unlike(@Parameter(description = "Post ID") @PathVariable Long id) {
         User actingUser = AuthenticationHelper.getLoggedUser();
         postService.unlikePost(id, actingUser);
         Post updatedPost = postService.getById(id);
         return postMapper.toResponse(updatedPost, actingUser);
     }
 
+    @Operation(summary = "Toggle like on a post", description = "Toggle like status on a post (requires authentication)",
+            security = @SecurityRequirement(name = "bearerAuth"))
     @PostMapping("/{id}/like")
-    public ResponseEntity<Map<String, Object>> toggleLike(@PathVariable Long id) {
+    public ResponseEntity<Map<String, Object>> toggleLike(@Parameter(description = "Post ID") @PathVariable Long id) {
         User actingUser = AuthenticationHelper.getLoggedUser();
         Post post = postService.toggleLike(id, actingUser);
 
@@ -151,11 +204,17 @@ public class PostRestController {
         return ResponseEntity.ok(response);
     }
 
-
+    @Operation(summary = "Add comment to post", description = "Create a new comment on a post (requires authentication)",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Comment created successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @ApiResponse(responseCode = "404", description = "Post not found")
+    })
     @PostMapping("/{id}/comments")
     @ResponseStatus(HttpStatus.CREATED)
     public CommentResponseDTO comment(
-            @PathVariable Long id,
+            @Parameter(description = "Post ID") @PathVariable Long id,
             @Valid @RequestBody CommentCreateDTO dto
     ) {
         User actingUser = AuthenticationHelper.getLoggedUser();
