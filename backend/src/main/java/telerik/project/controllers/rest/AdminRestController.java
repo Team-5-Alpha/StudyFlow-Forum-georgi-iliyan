@@ -81,7 +81,7 @@ public class AdminRestController {
     }
 
     @Operation(summary = "Block user (Admin)")
-    @PostMapping("/{id}/block")
+    @RequestMapping(value = "/{id}/block", method = {RequestMethod.POST, RequestMethod.PUT})
     public void blockUser(@Parameter(description = "User ID") @PathVariable Long id) {
         User actingUser = AuthenticationHelper.getLoggedUser();
         AuthorizationHelper.validateAdmin(actingUser);
@@ -90,7 +90,7 @@ public class AdminRestController {
     }
 
     @Operation(summary = "Unblock user (Admin)")
-    @DeleteMapping("/{id}/block")
+    @RequestMapping(value = {"/{id}/unblock", "/{id}/unblock."}, method = {RequestMethod.DELETE, RequestMethod.PUT, RequestMethod.POST})
     public void unblockUser(@Parameter(description = "User ID") @PathVariable Long id) {
         User actingUser = AuthenticationHelper.getLoggedUser();
         AuthorizationHelper.validateAdmin(actingUser);
